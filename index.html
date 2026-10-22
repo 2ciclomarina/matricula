@@ -442,6 +442,53 @@ tr.total td { background: var(--navy); color: #fff; font-weight: 800; }
 }
 @media (max-width: 1360px) { .hide-md { display: none; } table.t td, table.t th { padding: 9px 10px; } }
 
+/* teléfono con código de país separado · datos condicionales */
+.field.oculto { display: none; }
+.tel { display: flex; gap: 8px; align-items: stretch; }
+.tel .tel-pais { width: auto; flex: none; max-width: 150px; font-weight: 700; background: var(--sky-2); }
+.tel .tel-cod { width: 84px; flex: none; text-align: center; font-weight: 700; }
+.tel .tel-num { flex: 1; min-width: 0; letter-spacing: .04em; font-weight: 600; }
+.field.error .tel input, .field.error .tel select { border-color: var(--bad); background: #fff8f8; }
+.pueblos-card { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.meta-ring { --p: 0; width: 120px; height: 120px; border-radius: 50%; flex: none; display: grid; place-items: center; background: conic-gradient(var(--c, var(--ok)) calc(var(--p) * 1%), #edf0f6 0); }
+.meta-ring span { width: 96px; height: 96px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-family: var(--font-d); font-weight: 700; font-size: 24px; color: var(--ink); text-align: center; line-height: 1.1; }
+.meta-ring small { display: block; font-family: var(--font); font-size: 11px; color: var(--muted); font-weight: 700; }
+
+/* selección múltiple (cursos repetidos) */
+.multi { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-check { display: inline-flex; margin: 0; cursor: pointer; }
+.chip-check input { position: absolute; opacity: 0; pointer-events: none; }
+.chip-check span { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 7px 14px; font-weight: 700; font-size: 13.5px; color: var(--muted); transition: all .15s; }
+.chip-check input:checked + span { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chip-check input:focus-visible + span { box-shadow: 0 0 0 4px rgba(59, 125, 221, .2); }
+.chip-check input:disabled + span { opacity: .6; cursor: not-allowed; }
+
+/* calendario de matrícula */
+.calendario { background: #fff; border: 1px solid #edf0f6; border-radius: 22px; padding: 18px 20px; margin-bottom: 18px; box-shadow: var(--shadow);
+  background-image: radial-gradient(380px 200px at 100% 0%, rgba(226, 194, 125, .22), transparent 70%); }
+.cal-h { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.cal-h .eyebrow { color: #a07d2c; }
+.cal-plazo { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.cal-plazo b { color: var(--ink); }
+.cal-lista { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+.cal-item { flex: 0 0 auto; min-width: 230px; display: flex; gap: 12px; align-items: center; border: 1.5px solid #edf0f6; border-radius: 16px; padding: 12px 14px; background: #fbfcff; scroll-snap-align: start; }
+.cal-item.mio { border-color: var(--sand); background: #fffaf0; box-shadow: 0 6px 18px rgba(226, 194, 125, .25); }
+.cal-item.pasado { opacity: .55; }
+.cal-dia { width: 54px; height: 58px; border-radius: 14px; background: var(--ink); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: none; }
+.cal-item.mio .cal-dia { background: linear-gradient(160deg, #c39a3e, #a07d2c); }
+.cal-dia b { font-family: var(--font-d); font-size: 24px; line-height: 1; }
+.cal-dia span { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; opacity: .85; }
+.cal-ciclo { font-weight: 800; color: var(--ink); }
+.cal-hora { font-size: 13px; color: var(--muted); font-weight: 700; }
+.cal-lugar { font-size: 12.5px; color: var(--muted); }
+.login .calendario { margin: 26px 0 0; }
+.solicitud { display: flex; gap: 14px; align-items: flex-start; }
+.solicitud .s-ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; flex: none; background: var(--sky); }
+.solicitud.borrado .s-ico { background: var(--bad-bg); }
+.nav-item .cnt { margin-left: auto; background: var(--bad); color: #fff; border-radius: 999px; font-size: 11px; padding: 1px 7px; font-weight: 800; }
+.rank { display: grid; grid-template-columns: minmax(0, 1fr) 140px 40px; gap: 8px 12px; align-items: center; font-size: 14px; }
+.rank .bar { width: 100%; }
+
 </style>
 </head>
 <body>
@@ -479,7 +526,14 @@ if (/[?&]demo\b/.test(location.search)) window.APP_CONFIG.API_URL = '';
    Toda la seguridad (perfiles, permisos, bloqueos) se valida aquí,
    en el servidor, y no depende de la página web.
    ===================================================================== */
-function createCore(env) {
+/* ▶ EN APPS SCRIPT: si tiene abierto este archivo (Core.gs), elija «ejecutarInstalacion»
+     en la barra superior y presione «Ejecutar». Hace lo mismo que «instalar» de Code.gs. */
+function ejecutarInstalacion() {
+  if (typeof instalar !== 'function') throw new Error('Falta el archivo Code.gs en el proyecto de Apps Script.');
+  instalar();
+}
+
+function createCore_(env) {
   'use strict';
   if (!env || !env.db) {
     throw new Error('Esta función no se ejecuta directamente. Abra el archivo «Code.gs», elija la función «instalar» en la barra superior y presione «Ejecutar».');
@@ -492,19 +546,55 @@ function createCore(env) {
   };
   var CICLOS = ['Preescolar', 'Primer Ciclo', 'Segundo Ciclo', 'Enseñanza Media', 'Otro'];
   // curso = nivel al que se matricula (año de la matrícula) · cursoAnterior = curso de procedencia
-  var FICHA_META = ['rut', 'numeroMatricula', 'curso', 'cursoAnterior', 'estado', 'editFamilia', 'editFuncionario', 'fechaActualizacion', 'claveHash', 'debeCambiarClave', 'videoVisto', 'fechaEnvio',
+  var FICHA_META = ['rut', 'numeroMatricula', 'curso', 'cursoAnterior', 'estado', 'editFamilia', 'editFuncionario', 'fechaLimite', 'fechaActualizacion', 'claveHash', 'debeCambiarClave', 'videoVisto', 'fechaEnvio',
     'ultimaModificacion', 'modificadoPor', 'matriculadoPorNombre', 'matriculadoPorRut', 'fechaMatricula',
     'aceptaciones', 'fechaIngreso', 'fechaRetiro'];
   var HEADERS = {
-    Usuarios: ['id', 'nombre', 'rut', 'email', 'rol', 'cursos', 'fichas', 'claveHash', 'debeCambiarClave', 'activo', 'videoVisto', 'creado', 'ultimoAcceso'],
+    Usuarios: ['id', 'nombre', 'rut', 'email', 'rol', 'cursos', 'fichas', 'claveHash', 'debeCambiarClave', 'activo', 'videoVisto', 'creado', 'ultimoAcceso', 'superadmin'],
+    Solicitudes: ['id', 'tipo', 'rut', 'estudiante', 'solicitante', 'solicitanteEmail', 'motivo', 'fecha', 'estado', 'resolvio', 'fechaResolucion', 'comentario', 'codigo', 'codigoVence', 'codigoUsado'],
     Fichas: FICHA_META,
-    Campos: ['id', 'seccion', 'etiqueta', 'tipo', 'opciones', 'obligatorio', 'editableFamilia', 'ayuda', 'orden', 'activo', 'sistema'],
+    Campos: ['id', 'seccion', 'etiqueta', 'tipo', 'opciones', 'obligatorio', 'editableFamilia', 'ayuda', 'orden', 'activo', 'sistema', 'condicion'],
     Documentos: ['id', 'tipo', 'titulo', 'resumen', 'contenido', 'url', 'requiereAceptacion', 'imprimir', 'activo', 'orden'],
     Config: ['clave', 'valor'],
     Cursos: ['nombre', 'orden'],
     Bitacora: ['fecha', 'usuario', 'accion', 'detalle']
   };
-  var TIPOS_CAMPO = ['texto', 'parrafo', 'numero', 'fecha', 'email', 'telefono', 'rut', 'lista', 'si_no'];
+  var TIPOS_CAMPO = ['texto', 'parrafo', 'numero', 'fecha', 'email', 'telefono', 'rut', 'lista', 'si_no', 'nivel_pais', 'multiple'];
+  var VERSION_CAMPOS = 3; // sube cuando cambian los datos predeterminados de la ficha (ver migrarCampos)
+
+  /* Tabla de equivalencia educacional – Boletín Censal N°15 (INE, Censo 2024).
+     Cada país tiene 12 posiciones: 1° Básico … 8° Básico, 1° Medio … 4° Medio en Chile ('' = sin equivalencia). */
+  var NIVELES_CHILE = ['1° Básico', '2° Básico', '3° Básico', '4° Básico', '5° Básico', '6° Básico', '7° Básico', '8° Básico', '1° Medio', '2° Medio', '3° Medio', '4° Medio'];
+  function serie(desde, hasta, f) { var r = []; for (var i = desde; i <= hasta; i++) r.push(f(i)); return r; }
+  var EQUIV = {
+    'Venezuela': serie(1, 6, function (i) { return i + '° grado de Educación Primaria'; }).concat(serie(1, 4, function (i) { return i + '° año de Educación Media General'; }), ['', '5° año de Educación Media General']),
+    'Perú': serie(1, 6, function (i) { return i + '° grado de Educación Primaria'; }).concat(serie(1, 4, function (i) { return i + '° grado de Educación Secundaria'; }), ['', '5° grado de Educación Secundaria']),
+    'Haití': serie(1, 9, function (i) { return i + 'e année fondamentale (' + (i <= 4 ? '1er' : i <= 6 ? '2ème' : '3ème') + ' cycle)'; }).concat(['Nouveau Secondaire 1', 'Nouveau Secondaire 2', 'Nouveau Secondaire 3']),
+    'Colombia': serie(1, 5, function (i) { return i + '° grado de Educación Básica Primaria'; }).concat(serie(6, 9, function (i) { return i + '° grado de Educación Básica Secundaria'; }), ['10° grado de Educación Media', '', '11° grado de Educación Media']),
+    'Bolivia': serie(1, 6, function (i) { return i + '° año de Educación Primaria Comunitaria Vocacional'; }).concat(serie(1, 6, function (i) { return i + '° año de Educación Secundaria Comunitaria Productiva'; })),
+    'Argentina (sistema 6 + 6)': serie(1, 6, function (i) { return i + '° grado de Educación Primaria'; }).concat(serie(1, 6, function (i) { return i + '° año de Educación Secundaria'; })),
+    'Argentina (sistema 7 + 5)': serie(1, 7, function (i) { return i + '° grado de Educación Primaria'; }).concat(serie(1, 5, function (i) { return i + '° año de Educación Secundaria'; })),
+    'Ecuador': serie(2, 4, function (i) { return i + '° grado de Educación General Básica (Básica Elemental)'; }).concat(serie(5, 7, function (i) { return i + '° grado de Educación General Básica (Básica Media)'; }),
+      serie(8, 10, function (i) { return i + '° grado de Educación General Básica (Básica Superior)'; }), serie(1, 3, function (i) { return i + '° curso de Bachillerato'; })),
+    'Brasil': serie(1, 9, function (i) { return i + '° año de Ensino Fundamental'; }).concat(serie(1, 3, function (i) { return i + '° año de Ensino Médio'; })),
+    'República Dominicana': serie(1, 6, function (i) { return i + '° Primaria'; }).concat(serie(1, 3, function (i) { return i + '° grado del Primer Ciclo del Nivel Secundario'; }), serie(4, 6, function (i) { return i + '° grado del Segundo Ciclo del Nivel Secundario'; })),
+    'España': serie(1, 6, function (i) { return i + '° de Educación Primaria'; }).concat(serie(1, 4, function (i) { return i + '° de Educación Secundaria Obligatoria'; }), ['1° de Bachillerato', '2° de Bachillerato']),
+    'Cuba': serie(1, 6, function (i) { return i + '° grado de Educación Primaria'; }).concat(serie(7, 9, function (i) { return i + '° grado de Secundaria Básica'; }), serie(10, 12, function (i) { return i + '° grado de Preuniversitario'; })),
+    'México': serie(1, 6, function (i) { return i + '° Primaria'; }).concat(serie(1, 3, function (i) { return i + '° Educación Secundaria'; }), serie(1, 3, function (i) { return i + '° Bachillerato'; })),
+    'Paraguay': serie(1, 9, function (i) { return i + '° Educación Escolar Básica'; }).concat(['1° Medio', '2° Medio', '3° Medio']),
+    'Uruguay': serie(1, 6, function (i) { return i + '° año de Educación Primaria'; }).concat(serie(1, 3, function (i) { return i + '° año de Ciclo Básico'; }), serie(1, 3, function (i) { return i + '° año de Bachillerato'; })),
+    'Panamá': serie(1, 6, function (i) { return i + '° grado de Educación Primaria'; }).concat(serie(7, 9, function (i) { return i + '° grado de Educación Premedia'; }), serie(10, 12, function (i) { return i + '° año de Educación Media'; }))
+  };
+  var PAISES_ESTUDIO = ['Chile'].concat(Object.keys(EQUIV), ['Otro país']);
+  /* Opciones de «último nivel aprobado» para un país: «nivel del país → equivale a X en Chile». */
+  function nivelesPais(pais) {
+    var t = EQUIV[pais]; if (!t) return [];
+    var out = ['No cursó estudios en ese país / Educación Parvularia'];
+    t.forEach(function (n, i) { if (n) out.push(n + ' → equivale a ' + NIVELES_CHILE[i] + ' en Chile'); });
+    return out;
+  }
+  var PUEBLOS_VITALIDAD = ['mapuche', 'aymara', 'quechua', 'rapa nui']; // cuatro pueblos con vitalidad lingüística
+  function puebloConVitalidad(v) { var n = norm(v).replace('rapanui', 'rapa nui'); return PUEBLOS_VITALIDAD.filter(function (p) { return n.indexOf(p) === 0; })[0] || ''; }
 
   var CONFIG_DEF = {
     nombreColegio: 'Colegio Marina de Chile',
@@ -517,6 +607,13 @@ function createCore(env) {
     directorNombre: '',
     urlPlataforma: '',
     videoUrl: '',
+    fechaApertura: '',          // inicio general del proceso para las familias (AAAA-MM-DD HH:mm)
+    fechaCierre: '',            // cierre general (después solo pueden editar fichas con plazo especial o autorización)
+    numInicioPreescolar: '1',   // N° de matrícula: cada ciclo usa su propio tramo y nunca se repiten
+    numInicioPrimerCiclo: '101',
+    numInicioSegundoCiclo: '401',
+    numInicioMedia: '701',
+    calendario: '[]',           // días y horarios de matrícula por ciclo (JSON)
     mensajeBienvenida: 'Les damos la bienvenida al proceso de matrícula. Revise y complete la ficha con datos actualizados y lea los documentos institucionales antes de enviar.',
     textoActa: 'Quien suscribe, en calidad de apoderado/a del/la estudiante individualizado/a en la presente ficha, declara haber recibido, leído y tomado conocimiento del Proyecto Educativo Institucional (PEI), del Reglamento Interno Escolar (RIE) y del Reglamento de Evaluación, Calificación y Promoción del establecimiento. Asimismo, se compromete a respetar lo establecido en dichas normas, a apoyar activamente el proceso formativo de su pupilo/a y a respetar los lineamientos de la normativa educacional vigente.'
   };
@@ -573,6 +670,41 @@ function createCore(env) {
   }
   function esc(s) { return str(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function parseJSON(s, def) { try { return s ? JSON.parse(s) : def; } catch (e) { return def; } }
+
+  /* Teléfonos: Chile se guarda como +56 seguido de 9 dígitos (+56912345678), listo para WhatsApp.
+     Internacional: «+código número» (ej.: +54 91123456789). */
+  function normTel(v) {
+    v = str(v).trim(); if (!v) return '';
+    var d = v.replace(/\D/g, '');
+    var m = v.match(/^\+\s*(\d{1,4})\s+(.+)$/);
+    if (m && m[1] !== '56') return '+' + m[1] + ' ' + m[2].replace(/\D/g, '');
+    if (/^\+?\s*56/.test(v) && d.length >= 10) return '+56' + d.slice(2);
+    if (v.charAt(0) === '+') return '+' + d;
+    return '+56' + d;
+  }
+  function telValido(v) {
+    v = normTel(v);
+    return /^\+56\d{9}$/.test(v) || /^\+(?!56)\d{1,4} \d{6,14}$/.test(v);
+  }
+
+  /* Condiciones para mostrar un dato: «campo=valor», «campo!=valor», «campo» (tiene valor); varios valores con «|».
+     Un dato oculto no se exige. Si el dato del que depende también está oculto, este se oculta. */
+  function cumple(cond, datos) {
+    cond = str(cond).trim(); if (!cond) return true;
+    var m = cond.match(/^([\w]+)\s*(!=|=)\s*(.*)$/);
+    if (!m) return !!str(datos[cond]).trim();
+    var v = norm(datos[m[1]]), opciones = m[3].split('|').map(norm);
+    if (m[2] === '=') return opciones.indexOf(v) >= 0;
+    return !!v && opciones.indexOf(v) < 0;
+  }
+  function visible(c, datos, mapa, prof) {
+    if (!c || !str(c.condicion).trim()) return true;
+    if ((prof || 0) > 5) return true;
+    if (!cumple(c.condicion, datos)) return false;
+    var base = str(c.condicion).match(/^([\w]+)/), padre = base && mapa[base[1]];
+    return padre ? visible(padre, datos, mapa, (prof || 0) + 1) : true;
+  }
+  function mapaCampos(campos) { var m = {}; campos.forEach(function (c) { m[c.id] = c; }); return m; }
 
   /* --------------------------- acceso a datos -------------------------- */
   var db = env.db;
@@ -657,7 +789,7 @@ function createCore(env) {
     return {
       id: u.id, nombre: u.nombre, rut: rutFmt(u.rut), email: u.email, rol: u.rol, rolNombre: ROLES[u.rol] || u.rol,
       cursos: lista(u.cursos), fichas: lista(u.fichas), activo: si(u.activo), debeCambiarClave: si(u.debeCambiarClave),
-      videoVisto: si(u.videoVisto), ultimoAcceso: u.ultimoAcceso, creado: u.creado, claveCambiada: !!u.claveHash
+      videoVisto: si(u.videoVisto), ultimoAcceso: u.ultimoAcceso, creado: u.creado, claveCambiada: !!u.claveHash, superadmin: si(u.superadmin)
     };
   }
   function compararFichas(orden) {
@@ -715,13 +847,15 @@ function createCore(env) {
 
   /* ---------------------------- validación ---------------------------- */
   function faltantes(f, soloFamilia) {
-    var out = [], permitidos = soloFamilia ? editablesFamilia(f) : null;
-    getCampos(false).forEach(function (c) {
+    var out = [], permitidos = soloFamilia ? editablesFamilia(f) : null, campos = getCampos(false), mapa = mapaCampos(campos);
+    campos.forEach(function (c) {
       if (permitidos && permitidos.indexOf(c.id) < 0) return;
+      if (!visible(c, f, mapa)) return;
       var v = str(f[c.id]).trim();
       if (!v) { if (si(c.obligatorio)) out.push({ id: c.id, etiqueta: c.etiqueta, seccion: c.seccion }); return; }
       if (c.tipo === 'rut' && !rutValido(v)) out.push({ id: c.id, etiqueta: c.etiqueta + ' (RUT no válido)', seccion: c.seccion });
       if (c.tipo === 'email' && !emailValido(v)) out.push({ id: c.id, etiqueta: c.etiqueta + ' (correo no válido)', seccion: c.seccion });
+      if (c.tipo === 'telefono' && !telValido(v)) out.push({ id: c.id, etiqueta: c.etiqueta + ' (teléfono: +56 y 9 dígitos)', seccion: c.seccion });
     });
     return out;
   }
@@ -736,6 +870,7 @@ function createCore(env) {
       if (!permitidos[k]) continue;
       var v = str(datos[k]).slice(0, 3000);
       if (permitidos[k].tipo === 'rut' && v) v = rutFmt(v);
+      if (permitidos[k].tipo === 'telefono' && v) v = normTel(v);
       out[k] = v;
     }
     return out;
@@ -809,62 +944,146 @@ function createCore(env) {
     try { env.mail(u.email, T.asunto + ' – ' + cfg.nombreColegio, html, { logoUrl: logo }); return true; } catch (e) { return false; }
   }
   /* --------------------------- datos iniciales -------------------------- */
-  function campoDef(orden, id, seccion, etiqueta, tipo, opciones, obligatorio, familia, ayuda, sistema) {
+  function campoDef(orden, id, seccion, etiqueta, tipo, opciones, obligatorio, familia, ayuda, sistema, condicion) {
     return { id: id, seccion: seccion, etiqueta: etiqueta, tipo: tipo, opciones: opciones || '', obligatorio: siNo(obligatorio),
-      editableFamilia: siNo(familia), ayuda: ayuda || '', orden: String(orden), activo: 'SI', sistema: siNo(sistema) };
+      editableFamilia: siNo(familia), ayuda: ayuda || '', orden: String(orden), activo: 'SI', sistema: siNo(sistema), condicion: condicion || '' };
   }
+  // [sección, id, etiqueta, tipo, opciones, obligatorio, la familia completa, ayuda, esencial, mostrar solo si…]
   function camposIniciales() {
     var S1 = '1. Identificación del estudiante', S2 = '2. Apoderado/a titular', S3 = '3. Apoderado/a suplente',
-      S4 = '4. Antecedentes familiares', S5 = '5. Salud y emergencias', S6 = '6. Otros antecedentes', S7 = '7. Uso interno del establecimiento';
+      S4 = '4. Antecedentes familiares', S5 = '5. Salud y emergencias', S6 = '6. Personas autorizadas para retirar al estudiante',
+      S7 = '7. Otros antecedentes', S8 = '8. Uso interno del establecimiento';
     var PAR = 'Madre,Padre,Abuelo/a,Tío/a,Hermano/a,Tutor/a legal,Otro';
+    var NAC = 'Chilena,Venezolana,Peruana,Colombiana,Haitiana,Boliviana,Argentina,Ecuatoriana,Dominicana,Cubana,Brasileña,Paraguaya,Uruguaya,Mexicana,Española,Panameña,Otra';
+    var EXT = 'est_nacionalidad!=Chilena';
+    var TRAB = 'Trabaja de forma dependiente (con contrato),Trabaja de forma independiente,No trabaja actualmente,Jubilado/a o pensionado/a,Otra situación';
+    var DIAG = 'Trastorno del Espectro Autista (TEA),Trastorno por Déficit Atencional (TDA/TDAH),Trastorno Específico del Lenguaje (TEL),Dificultad Específica del Aprendizaje (DEA),Funcionamiento Intelectual Limítrofe (FIL),Discapacidad Intelectual,Discapacidad Visual,Discapacidad Auditiva,Discapacidad Motora,Trastorno emocional o conductual,Otro,En evaluación';
     var L = [
       [S1, 'est_nombres', 'Nombres', 'texto', '', true, false, '', true],
       [S1, 'est_apellido_paterno', 'Apellido paterno', 'texto', '', true, false, '', true],
       [S1, 'est_apellido_materno', 'Apellido materno', 'texto', '', false, false, '', true],
       [S1, 'est_fecha_nacimiento', 'Fecha de nacimiento', 'fecha', '', true, false, 'Si hay un error, informe al establecimiento.', true],
       [S1, 'est_sexo', 'Sexo', 'lista', 'Femenino,Masculino,Otro', true, true],
-      [S1, 'est_nacionalidad', 'Nacionalidad', 'texto', '', true, true, 'Ej.: Chilena'],
+      [S1, 'est_nacionalidad', 'Nacionalidad', 'lista', NAC, true, true],
+      [S1, 'est_nacionalidad_otra', '¿Cuál es la nacionalidad?', 'texto', '', true, true, '', false, 'est_nacionalidad=Otra'],
+      [S1, 'est_anios_chile', '¿Cuántos años lleva el estudiante en Chile?', 'lista', 'Menos de 1 año,1 año,2 años,3 años,4 años,5 años,6 años o más', true, true, '', false, EXT],
+      [S1, 'est_pais_estudios', 'País donde aprobó su último curso', 'lista', PAISES_ESTUDIO.join(','), true, true, 'Si ya estudió en Chile, elija «Chile».', false, EXT],
+      [S1, 'est_nivel_extranjero', 'Último curso aprobado en ese país y su equivalencia en Chile', 'nivel_pais', 'est_pais_estudios', true, true,
+        'Según la tabla de equivalencia educacional del Boletín Censal N°15 (INE).', false, 'est_pais_estudios!=Chile'],
+      [S1, 'est_pueblo_originario', '¿El estudiante pertenece o es descendiente de algún pueblo originario?', 'lista',
+        'No pertenece a un pueblo originario,Mapuche,Aymara,Quechua,Rapa Nui,Diaguita,Lickanantay (Atacameño),Colla,Kawésqar,Yagán,Chango,Prefiere no informar', true, true],
       [S1, 'est_direccion', 'Dirección del estudiante', 'texto', '', true, true, 'Calle, número, block/depto., población o villa'],
       [S1, 'est_comuna', 'Comuna', 'texto', '', true, true],
       [S1, 'est_vive_con', 'Vive con', 'lista', 'Madre y padre,Madre,Padre,Abuelos,Otro familiar,Tutor/a legal,Otro', true, true],
-      [S1, 'est_colegio_procedencia', 'Establecimiento de procedencia', 'texto', '', false, true, 'Solo para estudiantes nuevos'],
+      [S1, 'est_colegio_procedencia', 'Establecimiento de procedencia (último colegio o jardín infantil)', 'texto', '', true, true, 'Si el estudiante ya estudiaba en nuestro colegio, escriba «Colegio Marina de Chile».'],
+      [S1, 'est_repitio', '¿El estudiante ha repetido algún curso?', 'si_no', '', true, true],
+      [S1, 'est_cursos_repetidos', '¿Qué curso o cursos repitió?', 'multiple', NIVELES_CHILE.join(','), true, true, 'Puede marcar más de uno.', false, 'est_repitio=Sí'],
       [S2, 'apo_nombres', 'Nombres', 'texto', '', true, true],
       [S2, 'apo_apellido_paterno', 'Apellido paterno', 'texto', '', true, true],
       [S2, 'apo_apellido_materno', 'Apellido materno', 'texto', '', false, true],
       [S2, 'apo_rut', 'RUT', 'rut', '', true, true, 'Ej.: 12.345.678-9'],
       [S2, 'apo_parentesco', 'Parentesco con el estudiante', 'lista', PAR, true, true],
-      [S2, 'apo_celular', 'Teléfono celular', 'telefono', '', true, true, 'Ej.: 9 1234 5678'],
+      [S2, 'apo_celular', 'Teléfono celular', 'telefono', '', true, true],
       [S2, 'apo_email', 'Correo electrónico', 'email', '', true, true],
       [S2, 'apo_direccion', 'Dirección (si es distinta a la del estudiante)', 'texto', '', false, true],
       [S2, 'apo_comuna', 'Comuna', 'texto', '', false, true],
       [S2, 'apo_ocupacion', 'Ocupación', 'texto', '', false, true],
       [S2, 'apo_escolaridad', 'Nivel de escolaridad', 'lista', 'Básica incompleta,Básica completa,Media incompleta,Media completa,Técnico profesional,Universitaria,Postgrado', false, true],
-      [S3, 'sup_nombre', 'Nombre completo', 'texto', '', false, true],
-      [S3, 'sup_rut', 'RUT', 'rut', '', false, true],
-      [S3, 'sup_parentesco', 'Parentesco', 'lista', PAR, false, true],
-      [S3, 'sup_celular', 'Teléfono celular', 'telefono', '', false, true],
-      [S4, 'mad_nombre', 'Nombre completo de la madre', 'texto', '', false, true],
-      [S4, 'mad_celular', 'Teléfono de la madre', 'telefono', '', false, true],
-      [S4, 'pad_nombre', 'Nombre completo del padre', 'texto', '', false, true],
-      [S4, 'pad_celular', 'Teléfono del padre', 'telefono', '', false, true],
+      [S3, 'sup_nombre', 'Nombre completo', 'texto', '', false, true, 'Si registra un apoderado/a suplente, se pedirán sus datos de contacto.'],
+      [S3, 'sup_rut', 'RUT', 'rut', '', true, true, '', false, 'sup_nombre'],
+      [S3, 'sup_parentesco', 'Parentesco', 'lista', PAR, true, true, '', false, 'sup_nombre'],
+      [S3, 'sup_celular', 'Teléfono celular', 'telefono', '', true, true, '', false, 'sup_nombre'],
+      [S3, 'sup_email', 'Correo electrónico', 'email', '', true, true, '', false, 'sup_nombre'],
+      [S4, 'mad_situacion', 'Madre', 'lista', 'Registrar datos de la madre,No tiene / no corresponde,Fallecida,Sin contacto con el estudiante', true, true],
+      [S4, 'mad_nombre', 'Nombre completo de la madre', 'texto', '', true, true, '', false, 'mad_situacion=Registrar datos de la madre'],
+      [S4, 'mad_rut', 'RUT de la madre', 'rut', '', false, true, '', false, 'mad_situacion=Registrar datos de la madre'],
+      [S4, 'mad_celular', 'Teléfono de la madre', 'telefono', '', true, true, '', false, 'mad_situacion=Registrar datos de la madre'],
+      [S4, 'mad_email', 'Correo electrónico de la madre', 'email', '', true, true, '', false, 'mad_situacion=Registrar datos de la madre'],
+      [S4, 'mad_trabajo', 'Situación laboral de la madre', 'lista', TRAB, true, true, '', false, 'mad_situacion=Registrar datos de la madre'],
+      [S4, 'pad_situacion', 'Padre', 'lista', 'Registrar datos del padre,No tiene / no corresponde,Fallecido,Sin contacto con el estudiante', true, true],
+      [S4, 'pad_nombre', 'Nombre completo del padre', 'texto', '', true, true, '', false, 'pad_situacion=Registrar datos del padre'],
+      [S4, 'pad_rut', 'RUT del padre', 'rut', '', false, true, '', false, 'pad_situacion=Registrar datos del padre'],
+      [S4, 'pad_celular', 'Teléfono del padre', 'telefono', '', true, true, '', false, 'pad_situacion=Registrar datos del padre'],
+      [S4, 'pad_email', 'Correo electrónico del padre', 'email', '', true, true, '', false, 'pad_situacion=Registrar datos del padre'],
+      [S4, 'pad_trabajo', 'Situación laboral del padre', 'lista', TRAB, true, true, '', false, 'pad_situacion=Registrar datos del padre'],
       [S4, 'fam_personas_hogar', 'N° de personas que viven en el hogar', 'numero', '', false, true],
       [S5, 'sal_prevision', 'Previsión de salud', 'lista', 'FONASA,ISAPRE,CAPREDENA / DIPRECA,Otra,Ninguna', true, true],
+      [S5, 'sal_tramo_fonasa', 'Tramo de FONASA', 'lista', 'Tramo A,Tramo B,Tramo C,Tramo D,No sabe', true, true, 'Puede revisarlo en fonasa.cl o en la app Mi Fonasa.', false, 'sal_prevision=FONASA'],
+      [S5, 'sal_pie', '¿El estudiante pertenece al Programa de Integración Escolar (PIE)?', 'lista', 'No,Sí,En evaluación', true, true],
+      [S5, 'est_credencial_discapacidad', '¿El estudiante posee Credencial de Discapacidad (Registro Nacional de la Discapacidad)?', 'lista', 'No,Sí, posee credencial,En trámite', true, true],
       [S5, 'sal_enfermedades', 'Enfermedades o condiciones de salud', 'parrafo', '', false, true, 'Escriba "No" si no presenta'],
       [S5, 'sal_alergias', 'Alergias', 'parrafo', '', false, true],
-      [S5, 'sal_medicamentos', 'Medicamentos de uso permanente', 'parrafo', '', false, true],
+      [S5, 'sal_toma_medicamentos', '¿El estudiante toma algún medicamento de forma permanente?', 'si_no', '', true, true],
+      [S5, 'sal_medicamentos', '¿Qué medicamento(s) toma? Indique nombre, dosis y horario', 'parrafo', '', true, true, '', false, 'sal_toma_medicamentos=Sí'],
       [S5, 'sal_nee', '¿Presenta necesidades educativas especiales (NEE)?', 'lista', 'No,Sí - transitoria,Sí - permanente,En evaluación', true, true],
-      [S5, 'sal_diagnostico', 'Diagnóstico / especialista tratante', 'parrafo', '', false, true],
+      [S5, 'sal_diagnostico_tipo', 'Diagnóstico principal', 'lista', DIAG, true, true, '', false, 'sal_nee!=No'],
+      [S5, 'sal_diagnostico', 'Detalle del diagnóstico / especialista tratante', 'parrafo', '', false, true],
       [S5, 'sal_emergencia_nombre', 'Contacto de emergencia (nombre)', 'texto', '', true, true],
       [S5, 'sal_emergencia_telefono', 'Contacto de emergencia (teléfono)', 'telefono', '', true, true],
-      [S6, 'otr_religion', 'Clase de religión (Decreto 924)', 'lista', 'Católica,Evangélica,No desea clases de religión,Otra', true, true],
-      [S6, 'otr_autoriza_imagen', 'Autorizo el uso de la imagen del estudiante en actividades y medios institucionales', 'si_no', '', true, true],
-      [S6, 'otr_personas_retiro', 'Personas autorizadas para retirar al estudiante', 'parrafo', '', false, true, 'Nombre, RUT y parentesco'],
-      [S6, 'otr_transporte', 'Medio de transporte al colegio', 'lista', 'Caminando,Transporte escolar,Locomoción colectiva,Vehículo particular,Otro', false, true],
-      [S6, 'otr_beneficios', 'Beneficios (Prioritario, Preferente, JUNAEB, otros)', 'texto', '', false, true],
-      [S7, 'int_observaciones', 'Observaciones del establecimiento', 'parrafo', '', false, false]
+      [S5, 'sal_emergencia_email', 'Contacto de emergencia (correo electrónico)', 'email', '', true, true]
     ];
-    return L.map(function (x, i) { return campoDef((i + 1) * 10, x[1], x[0], x[2], x[3], x[4], x[5], x[6], x[7], x[8]); });
+    [1, 2, 3].forEach(function (n) {
+      var cond = 'ret' + n + '_nombre', P = 'Persona ' + n + ' · ';
+      L.push([S6, 'ret' + n + '_nombre', P + 'Nombre completo', 'texto', '', false, true, n === 1 ? 'Agregue a las personas (además del apoderado/a) que pueden retirar al estudiante.' : '', false, n > 1 ? 'ret' + (n - 1) + '_nombre' : '']);
+      L.push([S6, 'ret' + n + '_rut', P + 'RUT', 'rut', '', true, true, '', false, cond]);
+      L.push([S6, 'ret' + n + '_parentesco', P + 'Parentesco', 'lista', PAR + ',Furgón escolar', true, true, '', false, cond]);
+      L.push([S6, 'ret' + n + '_telefono', P + 'Teléfono', 'telefono', '', true, true, '', false, cond]);
+    });
+    L = L.concat([
+      [S7, 'otr_sep', 'Condición SEP del estudiante (Ley de Subvención Escolar Preferencial)', 'lista', 'Prioritario,Preferente,No corresponde,No sabe / en verificación', true, true],
+      [S7, 'otr_religion', 'Clase de religión (Decreto 924)', 'lista', 'Católica,Evangélica,No desea clases de religión,Otra', true, true],
+      [S7, 'otr_computador', '¿El estudiante tiene acceso a un computador en el hogar?', 'si_no', '', true, true],
+      [S7, 'otr_internet', '¿El estudiante tiene acceso a internet en el hogar?', 'si_no', '', true, true],
+      [S7, 'otr_autoriza_imagen', 'Autorizo el uso de la imagen del estudiante en actividades y medios institucionales', 'si_no', '', true, true],
+      [S7, 'otr_autoriza_info', 'Autorizo al establecimiento a enviarme información y comunicaciones (correo electrónico, WhatsApp u otros medios)', 'si_no', '', true, true],
+      [S7, 'otr_transporte', 'Medio de transporte al colegio', 'lista', 'Caminando,Transporte escolar,Locomoción colectiva,Vehículo particular,Otro', false, true],
+      [S7, 'otr_beneficios', 'Otros beneficios (JUNAEB, Chile Solidario, etc.)', 'texto', '', false, true],
+      [S8, 'int_observaciones', 'Observaciones del establecimiento', 'parrafo', '', false, false]
+    ]);
+    return L.map(function (x, i) { return campoDef((i + 1) * 10, x[1], x[0], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9]); });
   }
+  /* Actualiza los datos de la ficha en instalaciones anteriores sin borrar información:
+     agrega los datos nuevos, ordena y aplica los cambios de esta versión. */
+  function migrarCampos() {
+    var cfg = getConfig(), desde = parseInt(cfg.versionCampos, 10) || 1;
+    if (desde >= VERSION_CAMPOS) return false;
+    if (!db.all('Campos').length) { camposIniciales().forEach(function (c) { db.insert('Campos', c); }); }
+    else {
+      var existentes = {}; db.all('Campos').forEach(function (c) { existentes[c.id] = c; });
+      // datos cuya definición cambió en cada versión (tipo, opciones, etiqueta u obligatoriedad)
+      var CAMBIOS = {
+        2: ['est_nacionalidad', 'sup_rut', 'sup_parentesco', 'sup_celular', 'mad_nombre', 'mad_celular', 'pad_nombre', 'pad_celular', 'otr_beneficios', 'sup_nombre'],
+        3: ['est_colegio_procedencia', 'sal_medicamentos', 'sal_diagnostico']
+      }, CAMBIAN = [];
+      for (var v = desde + 1; v <= VERSION_CAMPOS; v++) CAMBIAN = CAMBIAN.concat(CAMBIOS[v] || []);
+      camposIniciales().forEach(function (c) {
+        var e = existentes[c.id];
+        if (!e) { db.insert('Campos', c); return; }
+        var patch = { orden: c.orden, seccion: c.seccion, condicion: c.condicion };
+        if (CAMBIAN.indexOf(c.id) >= 0) { patch.tipo = c.tipo; patch.opciones = c.opciones; patch.obligatorio = c.obligatorio; patch.etiqueta = c.etiqueta; patch.ayuda = c.ayuda; }
+        db.update('Campos', function (x) { return x.id === c.id; }, patch);
+      });
+      if (desde < 2) {
+        if (existentes.otr_personas_retiro) db.update('Campos', function (x) { return x.id === 'otr_personas_retiro'; }, { activo: 'NO', seccion: '6. Personas autorizadas para retirar al estudiante', orden: '9999' });
+        // quienes ya registraron nombre de madre/padre quedan con «Registrar datos…» para no perder lo ingresado
+        db.update('Fichas', function (f) { return str(f.mad_nombre).trim() && !str(f.mad_situacion).trim(); }, { mad_situacion: 'Registrar datos de la madre' });
+        db.update('Fichas', function (f) { return str(f.pad_nombre).trim() && !str(f.pad_situacion).trim(); }, { pad_situacion: 'Registrar datos del padre' });
+      }
+      if (desde < 3) { // quien ya escribió medicamentos queda con «Sí» en la nueva pregunta
+        db.update('Fichas', function (f) { return str(f.sal_medicamentos).trim() && !/^no\b/i.test(str(f.sal_medicamentos).trim()) && !str(f.sal_toma_medicamentos).trim(); }, { sal_toma_medicamentos: 'Sí' });
+      }
+    }
+    // el primer administrador del Equipo de Gestión queda como administrador principal (puede autorizar el borrado masivo)
+    var us = db.all('Usuarios');
+    if (!us.some(function (u) { return si(u.superadmin); })) {
+      var g = us.filter(function (u) { return u.rol === 'gestion' && si(u.activo); }).sort(function (a, b) { return str(a.creado) < str(b.creado) ? -1 : 1; })[0];
+      if (g) updUser(g.id, { superadmin: 'SI' });
+    }
+    if (db.all('Config').some(function (r) { return r.clave === 'versionCampos'; })) db.update('Config', function (r) { return r.clave === 'versionCampos'; }, { valor: String(VERSION_CAMPOS) });
+    else db.insert('Config', { clave: 'versionCampos', valor: String(VERSION_CAMPOS) });
+    return true;
+  }
+
   function documentosIniciales() {
     return [
       { id: 'pei', tipo: 'reglamento', titulo: 'Proyecto Educativo Institucional (PEI)', orden: '10', requiereAceptacion: 'SI', imprimir: 'NO', activo: 'SI', url: '', contenido: '',
@@ -888,11 +1107,12 @@ function createCore(env) {
     cfgRows.forEach(function (r) { existentes[r.clave] = 1; });
     for (var k in CONFIG_DEF) if (!existentes[k]) db.insert('Config', { clave: k, valor: CONFIG_DEF[k] });
     var hayGestion = db.all('Usuarios').some(function (u) { return u.rol === 'gestion' && si(u.activo); });
+    migrarCampos();
     var res = { admin: null };
     if (!hayGestion && opts.adminNombre && opts.adminRut && opts.adminEmail) {
       var clave = opts.adminClave || claveTemporal();
       var adm = { id: env.uuid(), nombre: opts.adminNombre, rut: rutFmt(opts.adminRut), email: str(opts.adminEmail).trim().toLowerCase(), rol: 'gestion',
-        cursos: '', fichas: '', claveHash: env.hash(clave), debeCambiarClave: siNo(!opts.adminClave), activo: 'SI', videoVisto: 'NO', creado: env.now(), ultimoAcceso: '' };
+        cursos: '', fichas: '', claveHash: env.hash(clave), debeCambiarClave: siNo(!opts.adminClave), activo: 'SI', videoVisto: 'NO', creado: env.now(), ultimoAcceso: '', superadmin: 'SI' };
       db.insert('Usuarios', adm);
       res.admin = { usuario: adm.email, clave: clave, correoEnviado: opts.adminClave ? false : correoCuenta(adm, clave, 'bienvenida') };
     }
@@ -971,6 +1191,7 @@ function createCore(env) {
         if (tipos[k] === 'fecha' || k === 'fechaIngreso' || k === 'fechaRetiro') d[k] = fechaISO(d[k]);
         else if (tipos[k] === 'rut') d[k] = rutFmt(d[k]);
         else if (tipos[k] === 'email') d[k] = d[k].toLowerCase();
+        else if (tipos[k] === 'telefono') d[k] = normTel(d[k]);
       }
       if (d.est_sexo) { var sx = d.est_sexo.toUpperCase(); d.est_sexo = sx === 'F' ? 'Femenino' : sx === 'M' ? 'Masculino' : d.est_sexo; }
       if (d.curso) d.curso = limpiarCurso(d.curso);
@@ -1011,14 +1232,14 @@ function createCore(env) {
   }
 
   /* ------------------------------ acciones ----------------------------- */
-  var PUBLICAS = { infoPublica: 1, loginFamilia: 1, loginFuncionario: 1, recuperarClave: 1 };
+  var PUBLICAS = { infoPublica: 1, loginFamilia: 1, loginFuncionario: 1, recuperarClave: 1, recuperarClaveFamilia: 1 };
   var A = {};
 
   A.infoPublica = function () {
     var cfg = getConfig();
     return {
       config: { nombreColegio: cfg.nombreColegio, ciudad: cfg.ciudad, anio: cfg.anio, videoUrl: cfg.videoUrl, mensajeBienvenida: cfg.mensajeBienvenida,
-        direccion: cfg.direccion, telefono: cfg.telefono, email: cfg.email },
+        direccion: cfg.direccion, telefono: cfg.telefono, email: cfg.email, calendario: cfg.calendario, fechaApertura: cfg.fechaApertura, fechaCierre: cfg.fechaCierre },
       documentos: getDocumentos(false).filter(function (d) { return d.tipo === 'reglamento'; })
         .map(function (d) { return { id: d.id, titulo: d.titulo, resumen: d.resumen, url: d.url }; })
     };
@@ -1108,15 +1329,18 @@ function createCore(env) {
 
   A.formulario = function (p, ses) {
     if (ses.tipo === 'staff') staffDe(ses);
+    migrarCampos();
     var cfg = getConfig();
     return { campos: getCampos(false), documentos: getDocumentos(false), config: cfg, cursos: getCursos(), niveles: getNiveles(), estados: ESTADOS, roles: ROLES };
   };
 
   /* ---------- familias ---------- */
   A.miFicha = function (p, ses) {
-    var o = fichaPublica(familiaDe(ses));
+    var f = familiaDe(ses), o = fichaPublica(f);
     getCampos(true).forEach(function (c) { if (/uso interno/i.test(c.seccion)) delete o[c.id]; });
     delete o.matriculadoPorRut;
+    o.ventana = estadoVentana(f);
+    o.solicitudPendiente = db.all('Solicitudes').some(function (s) { return s.tipo === 'apertura' && s.estado === 'pendiente' && rutKey(s.rut) === rutKey(f.rut); });
     return o;
   };
 
@@ -1130,6 +1354,7 @@ function createCore(env) {
   A.guardarBorrador = function (p, ses) {
     var f = familiaDe(ses);
     if (bloqueadaParaFamilia(f)) fail(MSG_BLOQUEO);
+    exigirVentana(f);
     var patch = filtrarDatos(p.datos, f);
     if (p.aceptaciones) patch.aceptaciones = JSON.stringify(mezclarAceptaciones(f, p.aceptaciones, 'Familia'));
     if (!f.estado || f.estado === 'pendiente') patch.estado = 'en_proceso';
@@ -1141,6 +1366,7 @@ function createCore(env) {
   A.enviarFicha = function (p, ses) {
     var f = familiaDe(ses);
     if (bloqueadaParaFamilia(f)) fail(MSG_BLOQUEO);
+    exigirVentana(f);
     var actualizacion = enActualizacion(f);
     var patch = filtrarDatos(p.datos, f), acc = mezclarAceptaciones(f, p.aceptaciones || {}, 'Familia');
     var merged = {}, k;
@@ -1162,7 +1388,8 @@ function createCore(env) {
     }
     updFicha(f.rut, patch);
     log('Familia ' + rutFmt(f.rut), actualizacion ? 'Datos actualizados por la familia' : 'Ficha enviada', f.curso);
-    return { enviado: true, actualizacion: actualizacion, fecha: env.now() };
+    var copia = correoCopiaFicha(findFicha(f.rut), actualizacion ? 'actualizacion' : 'envio');
+    return { enviado: true, actualizacion: actualizacion, fecha: env.now(), correoEnviado: copia, correo: enmascarar(findFicha(f.rut).apo_email) };
   };
 
   /* ---------- funcionarios: fichas ---------- */
@@ -1186,6 +1413,7 @@ function createCore(env) {
       soloGestion(u);
       patch.numeroMatricula = validarNumero(p.numeroMatricula, f.rut);
     }
+    if (p.fechaLimite !== undefined && str(p.fechaLimite) !== str(f.fechaLimite)) { soloGestion(u); patch.fechaLimite = str(p.fechaLimite).trim(); }
     if (moverse && !puedeVer(u, Object.assign({}, f, patch))) asignarAMi(u, f.rut);
     if (p.estado && ESTADOS[p.estado] && p.estado !== f.estado) {
       if (p.estado === 'matriculada') fail('Use el botón «Registrar matrícula» para matricular.');
@@ -1208,7 +1436,7 @@ function createCore(env) {
     var datos = filtrarDatos(p.datos, false);
     if (!datos.est_nombres || !datos.est_apellido_paterno) fail('Ingrese nombres y apellido paterno del estudiante.');
     if (!datos.est_fecha_nacimiento) fail('Ingrese la fecha de nacimiento (será la clave inicial de la familia).');
-    var f = { rut: rutFmt(p.rut), curso: curso, cursoAnterior: limpiarCurso(p.cursoAnterior), estado: 'pendiente', claveHash: '', debeCambiarClave: 'NO', videoVisto: 'NO', aceptaciones: '{}',
+    var f = { rut: rutFmt(p.rut), curso: curso, cursoAnterior: limpiarCurso(p.cursoAnterior), estado: 'pendiente', fechaLimite: u.rol === 'gestion' ? str(p.fechaLimite).trim() : '', claveHash: '', debeCambiarClave: 'NO', videoVisto: 'NO', aceptaciones: '{}',
       fechaIngreso: env.now().slice(0, 10), ultimaModificacion: env.now(), modificadoPor: u.nombre };
     for (var k in datos) f[k] = datos[k];
     db.insert('Fichas', f);
@@ -1235,7 +1463,7 @@ function createCore(env) {
     });
     return n;
   }
-  A.siguienteNumero = function (p, ses) { staffDe(ses); return String(numeroMayor() + 1); };
+  A.siguienteNumero = function (p, ses) { var u = staffDe(ses); return p.rut ? numeroSugerido(fichaAccesible(u, p.rut)) : String(numeroMayor() + 1); };
 
   /* Cierra el proceso: estado «Matriculado/a», N° de matrícula y funcionario que matricula. */
   A.registrarMatricula = function (p, ses) {
@@ -1244,11 +1472,12 @@ function createCore(env) {
     if (!f.cursoAnterior && p.cursoAnterior) f.cursoAnterior = limpiarCurso(p.cursoAnterior);
     var falta = faltantes(f, false);
     if (falta.length) return { matriculado: false, faltantes: falta };
-    var numero = validarNumero(p.numero, f.rut) || String(numeroMayor() + 1);
+    var numero = validarNumero(p.numero, f.rut) || numeroSugerido(f);
     updFicha(f.rut, { estado: 'matriculada', numeroMatricula: numero, editFamilia: '', editFuncionario: '', matriculadoPorNombre: u.nombre,
       matriculadoPorRut: rutFmt(u.rut), fechaMatricula: env.now(), ultimaModificacion: env.now(), modificadoPor: u.nombre });
     log(u.nombre, 'Matrícula registrada N° ' + numero, rutFmt(f.rut) + ' ' + f.curso);
-    return { matriculado: true, ficha: fichaPublica(findFicha(f.rut)) };
+    var copia = p.enviarCopia === false ? false : correoCopiaFicha(findFicha(f.rut), 'matricula');
+    return { matriculado: true, ficha: fichaPublica(findFicha(f.rut)), correoEnviado: copia };
   };
 
   /* El Equipo de Gestión habilita (o cierra) la edición para familias y/o funcionarios,
@@ -1308,7 +1537,8 @@ function createCore(env) {
   };
 
   A.estadisticas = function (p, ses) {
-    var u = staffDe(ses), orden = ordenCursos(), porCurso = {};
+    var u = staffDe(ses), orden = ordenCursos(), porCurso = {}, pueblos = {}, ciclos = {}, comunas = {}, procedencias = {};
+    function cont(obj, k) { k = str(k).replace(/\s+/g, ' ').trim(); if (!k) k = 'Sin información'; var key = norm(k); if (!obj[key]) obj[key] = { nombre: k, n: 0 }; obj[key].n++; }
     // Las fichas se cuentan por el nivel al que se matriculan (curso del año de matrícula)
     if (u.rol === 'gestion') getNiveles().forEach(function (n) { porCurso[norm(n)] = nuevoContador(n); });
     fichasVisibles(u).forEach(function (f) {
@@ -1318,16 +1548,34 @@ function createCore(env) {
       o.total++; o[e] = (o[e] || 0) + 1;
       var sx = norm(f.est_sexo);
       if (sx.charAt(0) === 'f') o.mujeres++; else if (sx.charAt(0) === 'm') o.hombres++;
+      if (e === 'retirado') return;
+      var ci = cicloDe(f.curso), C = ciclos[ci] || (ciclos[ci] = { ciclo: ci, vigentes: 0, nuevos: 0, pie: 0, pieEval: 0, nee: 0, pueblos: 0, extranjeros: 0, diagnosticos: {}, pueblosDet: {} });
+      C.vigentes++;
+      var pueblo = puebloConVitalidad(f.est_pueblo_originario);
+      if (pueblo) { o.pueblos++; C.pueblos++; pueblos[pueblo] = (pueblos[pueblo] || 0) + 1; C.pueblosDet[pueblo] = (C.pueblosDet[pueblo] || 0) + 1; }
+      if (!str(f.cursoAnterior).trim()) { o.nuevos++; C.nuevos++; }
+      var pie = norm(f.sal_pie);
+      if (pie === 'si') { o.pie++; C.pie++; } else if (pie.indexOf('evaluacion') >= 0) C.pieEval++;
+      if (norm(f.sal_nee).indexOf('si') === 0 || norm(f.sal_nee).indexOf('evaluacion') >= 0) {
+        C.nee++;
+        var d = str(f.sal_diagnostico_tipo).trim() || 'Sin diagnóstico informado';
+        C.diagnosticos[d] = (C.diagnosticos[d] || 0) + 1;
+      }
+      if (norm(f.est_nacionalidad) && norm(f.est_nacionalidad) !== 'chilena') C.extranjeros++;
+      cont(comunas, f.est_comuna);
+      cont(procedencias, f.est_colegio_procedencia);
     });
     var cursos = Object.keys(porCurso).map(function (k) { return porCurso[k]; });
     cursos.sort(function (a, b) {
       var oa = orden[norm(a.curso)], ob = orden[norm(b.curso)];
       return (oa === undefined ? 9999 : oa) - (ob === undefined ? 9999 : ob) || (a.curso < b.curso ? -1 : 1);
     });
-    return { cursos: cursos, ciclos: CICLOS, estados: ESTADOS };
+    function lista2(obj) { return Object.keys(obj).map(function (k) { return obj[k]; }).sort(function (a, b) { return b.n - a.n || (a.nombre < b.nombre ? -1 : 1); }); }
+    return { cursos: cursos, ciclos: CICLOS, estados: ESTADOS, pueblos: pueblos, metaPueblos: 20,
+      porCiclo: CICLOS.filter(function (c) { return ciclos[c]; }).map(function (c) { return ciclos[c]; }), comunas: lista2(comunas), procedencias: lista2(procedencias) };
   };
   function nuevoContador(c) {
-    return { curso: c, nivel: nivelDe(c), ciclo: cicloDe(c), total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0 };
+    return { curso: c, nivel: nivelDe(c), ciclo: cicloDe(c), total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0, pueblos: 0, nuevos: 0, pie: 0 };
   }
 
   /* ---------- funcionarios: usuarios (Equipo de Gestión) ---------- */
@@ -1437,6 +1685,7 @@ function createCore(env) {
   /* ---------- configuración (Equipo de Gestión) ---------- */
   A.datosAdmin = function (p, ses) {
     soloGestion(staffDe(ses));
+    migrarCampos();
     return { campos: getCampos(true), documentos: getDocumentos(true), config: getConfig(), cursos: getCursos(), tipos: TIPOS_CAMPO };
   };
 
@@ -1448,7 +1697,7 @@ function createCore(env) {
     if (c.tipo === 'lista' && !lista(c.opciones).length) fail('Ingrese las opciones de la lista, separadas por coma.');
     var limpio = { seccion: str(c.seccion).trim() || 'Otros antecedentes', etiqueta: str(c.etiqueta).trim(), tipo: c.tipo,
       opciones: lista(c.opciones).join(','), obligatorio: siNo(!!c.obligatorio), editableFamilia: siNo(!!c.editableFamilia),
-      ayuda: str(c.ayuda).trim(), orden: str(c.orden || '999'), activo: siNo(c.activo !== false) };
+      ayuda: str(c.ayuda).trim(), orden: str(c.orden || '999'), activo: siNo(c.activo !== false), condicion: str(c.condicion).trim() };
     var existente = c.id && db.all('Campos').filter(function (x) { return x.id === c.id; })[0];
     if (existente) {
       if (si(existente.sistema)) { limpio.activo = 'SI'; limpio.tipo = existente.tipo; }
@@ -1525,6 +1774,229 @@ function createCore(env) {
     return db.all('Bitacora').slice(-300).reverse().map(limpiarFila);
   };
 
+  /* ===================== N° de matrícula por ciclo ===================== */
+  // Cada ciclo tiene su tramo (Configuración): Preescolar desde 1, Primer Ciclo desde 101, etc. Nunca se repiten.
+  function tramoCiclo(ciclo) {
+    var cfg = getConfig();
+    var ini = { 'Preescolar': cfg.numInicioPreescolar, 'Primer Ciclo': cfg.numInicioPrimerCiclo, 'Segundo Ciclo': cfg.numInicioSegundoCiclo, 'Enseñanza Media': cfg.numInicioMedia };
+    var desde = parseInt(ini[ciclo], 10);
+    if (!desde) return null;
+    var otros = Object.keys(ini).map(function (k) { return parseInt(ini[k], 10) || 0; }).filter(function (n) { return n > desde; }).sort(function (a, b) { return a - b; });
+    return { desde: desde, hasta: otros[0] || Infinity };
+  }
+  function numeroSugerido(f) {
+    var usados = {}, max = 0, t = tramoCiclo(cicloDe(f.curso));
+    db.all('Fichas').forEach(function (x) {
+      if (rutKey(x.rut) === rutKey(f.rut)) return;
+      var n = parseInt(str(x.numeroMatricula).replace(/\D/g, ''), 10);
+      if (n) { usados[n] = 1; if (t && n >= t.desde && n < t.hasta && n > max) max = n; }
+    });
+    if (!t) return String(numeroMayor() + 1);
+    var n = max ? max + 1 : t.desde;
+    while (usados[n] && n < t.hasta) n++;
+    if (n >= t.hasta) { for (n = t.desde; n < t.hasta && usados[n]; n++) { /* busca un número libre del tramo */ } }
+    return String(n < t.hasta ? n : numeroMayor() + 1);
+  }
+
+  /* ===================== Fechas del proceso ===================== */
+  function fechaHora(v) { v = str(v).trim().replace('T', ' '); if (/^\d{4}-\d{2}-\d{2}$/.test(v)) v += ' 00:00'; return v.slice(0, 16); }
+  function fechaLegible(v) { var m = fechaHora(v).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1] + ' a las ' + m[4] : str(v); }
+  function fechaMas(horas) { // fecha local (zona del servidor) dentro de N horas
+    var d = new Date(Date.now() + horas * 3600000);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  // ¿La familia puede completar o modificar su ficha ahora? (plazo general o plazo especial de la ficha)
+  function estadoVentana(f) {
+    var cfg = getConfig(), ahora = env.now(), ap = fechaHora(cfg.fechaApertura), ci = fechaHora(cfg.fechaCierre), lim = str(f && f.fechaLimite).trim();
+    if (lim) {
+      var l = fechaHora(lim.length === 10 ? lim + ' 23:59' : lim);
+      if (ahora <= l) return { abierta: true, especial: true, hasta: l, hastaTxt: fechaLegible(l) };
+    }
+    if (ap && ahora < ap) return { abierta: false, motivo: 'antes', fecha: ap, fechaTxt: fechaLegible(ap) };
+    if (ci && ahora > ci) return { abierta: false, motivo: 'cerrado', fecha: ci, fechaTxt: fechaLegible(ci) };
+    return { abierta: true, hasta: ci, hastaTxt: ci ? fechaLegible(ci) : '' };
+  }
+  function exigirVentana(f) {
+    if (str(f.editFamilia).trim()) return; // edición autorizada por el Equipo de Gestión
+    var w = estadoVentana(f);
+    if (w.abierta) return;
+    fail(w.motivo === 'antes' ? 'El proceso de matrícula para familias comienza el ' + w.fechaTxt + '.' :
+      'El plazo para completar la ficha terminó el ' + w.fechaTxt + '. Si necesita completarla o corregirla, comuníquese con el establecimiento.');
+  }
+
+  /* ===================== Correos con diseño institucional ===================== */
+  function correoBase(o) {
+    if (!emailValido(o.para)) return false;
+    var cfg = getConfig(), url = str(cfg.urlPlataforma).trim();
+    var html = '<div style="background:#f3f5fa;padding:28px 10px;font-family:Arial,Helvetica,sans-serif">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e6eaf2">' +
+      '<tr><td align="center" style="background:#0a1f4d;padding:28px 28px 22px">' +
+      '<img src="cid:insignia" width="64" height="72" alt="Insignia" style="display:block;background:#ffffff;border-radius:14px;padding:6px;margin:0 auto">' +
+      '<div style="color:#e2c27d;font-size:12px;letter-spacing:3px;font-weight:bold;margin-top:14px;text-transform:uppercase">Admisión y matrículas ' + esc(cfg.anio) + '</div>' +
+      '<div style="color:#ffffff;font-family:Georgia,\'Times New Roman\',serif;font-size:26px;margin-top:6px">' + esc(cfg.nombreColegio) + '</div></td></tr>' +
+      '<tr><td style="height:6px;background:#e2c27d;font-size:0;line-height:0">&nbsp;</td></tr>' +
+      '<tr><td style="padding:28px 32px 6px"><div style="font-family:Georgia,\'Times New Roman\',serif;color:#0a1f4d;font-size:24px;font-weight:bold">' + esc(o.titulo) + '</div>' +
+      '<p style="color:#4a5872;font-size:15px;line-height:1.65;margin:12px 0 0">' + o.intro + '</p></td></tr>' +
+      (o.tarjeta ? '<tr><td style="padding:18px 32px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fbf7ec;border:2px dashed #e2c27d;border-radius:16px"><tr><td style="padding:20px 22px">' + o.tarjeta + '</td></tr></table></td></tr>' : '') +
+      (o.cuerpo ? '<tr><td style="padding:6px 32px 18px">' + o.cuerpo + '</td></tr>' : '') +
+      (url && o.boton !== false ? '<tr><td align="center" style="padding:6px 32px 26px"><a href="' + esc(url) + '" style="display:inline-block;background:#0a1f4d;color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:15px 34px;border-radius:999px">' + esc(o.textoBoton || 'Ingresar a la plataforma') + ' &rarr;</a></td></tr>' : '') +
+      '<tr><td style="background:#f7f8fb;padding:18px 32px;color:#8a94a8;font-size:12px;line-height:1.5;text-align:center">Mensaje automático de la Plataforma de Fichas de Matrícula del ' + esc(cfg.nombreColegio) + '. No responda a este correo.' +
+      (cfg.telefono || cfg.email ? '<br>Consultas: ' + esc([cfg.telefono, cfg.email].filter(Boolean).join(' · ')) : '') + '</td></tr></table></div>';
+    var logo = url ? url.replace(/\/?$/, '/') + 'insignia.jpg' : '';
+    try { env.mail(o.para, o.asunto + ' – ' + cfg.nombreColegio, html, { logoUrl: logo, adjuntoHtml: o.adjuntoHtml, adjuntoNombre: o.adjuntoNombre }); return true; } catch (e) { return false; }
+  }
+  function dato(etq, val, grande) {
+    return '<div style="font-size:12px;color:#8a94a8;margin-top:12px;text-transform:uppercase;letter-spacing:1px">' + etq + '</div>' +
+      '<div style="font-size:' + (grande ? '24px;font-family:\'Courier New\',monospace;letter-spacing:3px' : '16px') + ';color:#0a1f4d;font-weight:bold;margin-top:3px;word-break:break-all">' + esc(val) + '</div>';
+  }
+  function nombreEstudiante(f) { return [f.est_nombres, f.est_apellido_paterno, f.est_apellido_materno].filter(Boolean).join(' '); }
+  function nombreApoderado(f) { return [f.apo_nombres, f.apo_apellido_paterno, f.apo_apellido_materno].filter(Boolean).join(' '); }
+  function enmascarar(email) { var m = str(email).match(/^(.)(.*)(@.*)$/); return m ? m[1] + m[2].replace(/./g, '•').slice(0, 6) + m[3] : ''; }
+
+  /* Copia de la ficha (resumen en el correo + PDF adjunto) para el apoderado/a. */
+  function fichaResumenHtml(f, paraPdf) {
+    var cfg = getConfig(), campos = getCampos(false).filter(function (c) { return !/uso interno/i.test(c.seccion); }), mapa = mapaCampos(campos), html = '', sec = '';
+    var td = 'style="border:1px solid #dfe5f0;padding:5px 8px;font-size:' + (paraPdf ? '10px' : '13px') + ';vertical-align:top"';
+    campos.forEach(function (c) {
+      if (!visible(c, f, mapa)) return;
+      if (c.seccion !== sec) {
+        html += (sec ? '</table>' : '') + '<div style="background:#0a1f4d;color:#fff;font-weight:bold;font-size:' + (paraPdf ? '11px' : '13px') + ';padding:5px 8px;margin-top:12px">' + esc(c.seccion) + '</div><table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">';
+        sec = c.seccion;
+      }
+      var v = str(f[c.id]);
+      html += '<tr><td ' + td.replace('style="', 'style="width:42%;background:#f4f7fc;color:#0a1f4d;font-weight:bold;') + '>' + esc(c.etiqueta) + '</td><td ' + td + '>' + (v ? esc(v) : '<span style="color:#aaa">—</span>') + '</td></tr>';
+    });
+    if (sec) html += '</table>';
+    var cab = '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:6px"><tr>' +
+      '<td style="font-size:' + (paraPdf ? '16px' : '18px') + ';font-weight:bold;color:#0a1f4d">Ficha de matrícula ' + esc(cfg.anio) + '</td>' +
+      '<td align="right" style="font-size:12px;color:#4a5872">RUT ' + esc(f.rut) + ' · Nivel ' + esc(f.curso) + (f.numeroMatricula ? ' · N° ' + esc(f.numeroMatricula) : '') + '</td></tr></table>';
+    if (!paraPdf) return cab + html;
+    return '<html><head><meta charset="utf-8"></head><body style="font-family:Arial,Helvetica,sans-serif;color:#1b2a41">' +
+      '<div style="text-align:center;border-bottom:3px solid #0a1f4d;padding-bottom:6px;margin-bottom:10px"><div style="font-size:18px;font-weight:bold;color:#0a1f4d">' + esc(cfg.nombreColegio) + '</div>' +
+      '<div style="font-size:11px;color:#555">' + esc([cfg.direccion, cfg.ciudad].filter(Boolean).join(' · ')) + '</div></div>' +
+      '<div style="font-size:14px;font-weight:bold;margin-bottom:4px">' + esc(nombreEstudiante(f)) + '</div>' + cab + html +
+      '<p style="font-size:9px;color:#777;margin-top:14px">Copia generada automáticamente el ' + esc(env.now()) + '. El documento oficial con firmas se emite en el establecimiento.</p></body></html>';
+  }
+  function correoCopiaFicha(f, motivo) {
+    var tit = motivo === 'matricula' ? '¡Matrícula registrada!' : motivo === 'actualizacion' ? 'Datos actualizados' : '¡Recibimos su ficha de matrícula!';
+    var intro = motivo === 'matricula' ? 'Le confirmamos que <b>' + esc(nombreEstudiante(f)) + '</b> quedó matriculado/a' + (f.numeroMatricula ? ' con el <b>N° de matrícula ' + esc(f.numeroMatricula) + '</b>' : '') + '. Adjuntamos una copia de la ficha.' :
+      'Le enviamos una copia de la ficha de matrícula de <b>' + esc(nombreEstudiante(f)) + '</b> con los datos registrados. Si detecta un error, puede solicitar una corrección desde la plataforma.';
+    return correoBase({ para: f.apo_email, asunto: tit, titulo: tit, intro: intro, cuerpo: fichaResumenHtml(f, false),
+      adjuntoHtml: fichaResumenHtml(f, true), adjuntoNombre: ('Ficha_Matricula_' + nombreEstudiante(f)).replace(/[^\wÁÉÍÓÚáéíóúÑñ]+/g, '_') + '.pdf' });
+  }
+
+  /* ===================== Recuperar clave (familias) ===================== */
+  A.recuperarClaveFamilia = function (p) {
+    var k = rutKey(p.rut);
+    if (!k) fail('Ingrese el RUT del estudiante.');
+    var f = findFicha(k), msg = 'Si el RUT está registrado y la ficha tiene un correo de apoderado/a, enviaremos una clave temporal a ese correo.';
+    if (!f || !emailValido(f.apo_email)) return { mensaje: msg };
+    if (intentos('rf' + k) >= 3) fail('Ya se enviaron varias claves temporales. Espere 15 minutos o comuníquese con el establecimiento.');
+    intentos('rf' + k, true);
+    var temp = claveTemporal();
+    updFicha(f.rut, { claveHash: env.hash(temp), debeCambiarClave: 'SI' });
+    correoBase({ para: f.apo_email, asunto: 'Clave temporal de acceso', titulo: 'Recuperación de clave',
+      intro: 'Recibimos una solicitud para recuperar el acceso a la ficha de matrícula de <b>' + esc(nombreEstudiante(f)) + '</b>. Ingrese con estos datos; el sistema le pedirá crear una clave nueva. Si no fue usted, avise al establecimiento.',
+      tarjeta: '<div style="font-size:12px;color:#8a6a1f;letter-spacing:2px;font-weight:bold">&#128273; DATOS DE ACCESO · FAMILIAS</div>' + dato('Usuario (RUT del estudiante)', rutFmt(f.rut)) + dato('Clave temporal', temp, true) });
+    log('Familia ' + rutFmt(f.rut), 'Recuperación de clave', 'Autoservicio');
+    return { mensaje: 'Enviamos una clave temporal a ' + enmascarar(f.apo_email) + '. Revise también la carpeta de spam.' };
+  };
+
+  /* ===================== Solicitudes ===================== */
+  function nuevaSolicitud(s) { s.id = env.uuid(); s.fecha = env.now(); s.estado = 'pendiente'; db.insert('Solicitudes', s); return s; }
+  function esSuper(u) { return u.rol === 'gestion' && si(u.superadmin); }
+
+  // Familia (o funcionario con ficha cerrada) solicita abrir la ficha para corregir datos.
+  A.solicitarApertura = function (p, ses) {
+    var f, quien, email, tipo;
+    if (ses.tipo === 'familia') { f = familiaDe(ses); quien = 'Familia · ' + (nombreApoderado(f) || 'apoderado/a'); email = f.apo_email; tipo = 'apertura'; }
+    else { var u = staffDe(ses); f = fichaAccesible(u, p.rut); quien = u.nombre + ' (' + (ROLES[u.rol] || u.rol) + ')'; email = u.email; tipo = 'apertura_funcionario'; }
+    var motivo = str(p.motivo).trim();
+    if (motivo.length < 5) fail('Indique brevemente qué dato necesita corregir.');
+    if (db.all('Solicitudes').some(function (s) { return s.estado === 'pendiente' && s.tipo === tipo && rutKey(s.rut) === rutKey(f.rut); })) {
+      fail('Ya hay una solicitud pendiente para esta ficha. El Equipo de Gestión la revisará pronto.');
+    }
+    nuevaSolicitud({ tipo: tipo, rut: rutFmt(f.rut), estudiante: nombreEstudiante(f) + ' · ' + f.curso, solicitante: quien, solicitanteEmail: str(email), motivo: motivo.slice(0, 1000) });
+    log(quien, 'Solicitud de apertura', rutFmt(f.rut));
+    return { enviada: true };
+  };
+  // Un integrante del Equipo de Gestión solicita autorización para borrar todas las fichas.
+  A.solicitarBorrado = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    if (esSuper(u)) fail('Como administrador principal puede eliminar las fichas directamente.');
+    var motivo = str(p.motivo).trim();
+    if (motivo.length < 5) fail('Indique el motivo del borrado.');
+    nuevaSolicitud({ tipo: 'borrado', rut: '', estudiante: 'TODAS LAS FICHAS', solicitante: u.nombre, solicitanteEmail: u.email, motivo: motivo.slice(0, 1000) });
+    db.all('Usuarios').filter(function (x) { return si(x.superadmin) && si(x.activo); }).forEach(function (s) {
+      correoBase({ para: s.email, asunto: 'Solicitud de borrado masivo', titulo: 'Solicitud de borrado de fichas',
+        intro: '<b>' + esc(u.nombre) + '</b> solicita autorización para <b>eliminar todas las fichas de matrícula</b>. Ingrese a la plataforma ▸ <b>Solicitudes</b> para autorizar o rechazar.',
+        tarjeta: dato('Motivo', motivo), textoBoton: 'Revisar la solicitud' });
+    });
+    log(u.nombre, 'Solicitud de borrado masivo', motivo);
+    return { enviada: true };
+  };
+  A.listarSolicitudes = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    var l = db.all('Solicitudes').map(limpiarFila);
+    l.forEach(function (s) { if (s.codigo && !esSuper(u) && s.solicitanteEmail !== u.email) s.codigo = '••••••'; });
+    l.sort(function (a, b) { return (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1) || (a.fecha < b.fecha ? 1 : -1); });
+    return { solicitudes: l.slice(0, 300), superadmin: esSuper(u) };
+  };
+  A.resolverSolicitud = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    var s = db.all('Solicitudes').filter(function (x) { return x.id === p.id; })[0];
+    if (!s) fail('Solicitud no encontrada.');
+    if (s.estado !== 'pendiente') fail('Esta solicitud ya fue resuelta.');
+    if (s.tipo === 'borrado' && !esSuper(u)) fail('Solo el administrador principal puede autorizar el borrado masivo.');
+    var aprobar = !!p.aprobar, comentario = str(p.comentario).trim().slice(0, 500);
+    var patch = { estado: aprobar ? 'aprobada' : 'rechazada', resolvio: u.nombre, fechaResolucion: env.now(), comentario: comentario }, res = { estado: patch.estado };
+    if (s.tipo === 'borrado') {
+      if (aprobar) {
+        patch.codigo = claveTemporal().toUpperCase().slice(0, 6); patch.codigoVence = fechaMas(24); patch.codigoUsado = '';
+        res.codigo = patch.codigo;
+        res.correoEnviado = correoBase({ para: s.solicitanteEmail, asunto: 'Código de autorización', titulo: 'Borrado masivo autorizado',
+          intro: '<b>' + esc(u.nombre) + '</b> autorizó su solicitud para eliminar todas las fichas. Use este código en la plataforma (Fichas ▸ Eliminar todas las fichas). Es válido por 24 horas y se puede usar una sola vez.',
+          tarjeta: dato('Código de autorización', patch.codigo, true) + dato('Válido hasta', fechaLegible(patch.codigoVence)) });
+      } else {
+        correoBase({ para: s.solicitanteEmail, asunto: 'Solicitud de borrado rechazada', titulo: 'Solicitud no autorizada',
+          intro: 'Su solicitud para eliminar todas las fichas no fue autorizada.' + (comentario ? ' Comentario: ' + esc(comentario) : ''), boton: false });
+      }
+    } else {
+      var f = findFicha(s.rut);
+      if (aprobar && f) updFicha(f.rut, s.tipo === 'apertura' ? { editFamilia: 'TODOS', ultimaModificacion: env.now(), modificadoPor: u.nombre } : { editFuncionario: 'SI' });
+      if (s.tipo === 'apertura' && f) {
+        res.correoEnviado = correoBase({ para: f.apo_email, asunto: aprobar ? 'Corrección autorizada' : 'Solicitud de corrección',
+          titulo: aprobar ? '¡Corrección autorizada!' : 'Solicitud no autorizada',
+          intro: aprobar ? 'El establecimiento autorizó su solicitud para corregir la ficha de matrícula de <b>' + esc(nombreEstudiante(f)) + '</b>. Ya puede ingresar, realizar los cambios y presionar «Enviar datos actualizados».' :
+            'Su solicitud para corregir la ficha de <b>' + esc(nombreEstudiante(f)) + '</b> no fue autorizada.',
+          tarjeta: comentario ? dato('Comentario del establecimiento', comentario) : '', boton: aprobar, textoBoton: 'Ingresar y corregir' });
+      } else if (s.solicitanteEmail) {
+        res.correoEnviado = correoBase({ para: s.solicitanteEmail, asunto: aprobar ? 'Edición autorizada' : 'Solicitud de edición', titulo: aprobar ? 'Edición autorizada' : 'Solicitud no autorizada',
+          intro: (aprobar ? 'Se autorizó la edición de la ficha de ' : 'No se autorizó la edición de la ficha de ') + '<b>' + esc(s.estudiante) + '</b>.' + (comentario ? ' Comentario: ' + esc(comentario) : '') });
+      }
+    }
+    db.update('Solicitudes', function (x) { return x.id === s.id; }, patch);
+    log(u.nombre, 'Solicitud ' + patch.estado, s.tipo + ' · ' + (s.rut || s.estudiante));
+    return res;
+  };
+  /* Borrado masivo: el administrador principal confirma escribiendo «ELIMINAR TODO»;
+     los demás integrantes del Equipo de Gestión necesitan un código de autorización vigente. */
+  A.eliminarTodasLasFichas = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    if (str(p.confirmacion).trim().toUpperCase() !== 'ELIMINAR TODO') fail('Para confirmar escriba exactamente: ELIMINAR TODO');
+    if (!esSuper(u)) {
+      var cod = str(p.codigo).trim().toUpperCase(), ahora = env.now();
+      var s = db.all('Solicitudes').filter(function (x) {
+        return x.tipo === 'borrado' && x.estado === 'aprobada' && x.codigo === cod && norm(x.solicitanteEmail) === norm(u.email) && !x.codigoUsado && str(x.codigoVence) >= ahora;
+      })[0];
+      if (!s) fail('El código de autorización no es válido, ya se usó o venció. Solicite uno nuevo al administrador principal.');
+      db.update('Solicitudes', function (x) { return x.id === s.id; }, { codigoUsado: ahora });
+    }
+    var n = db.all('Fichas').length;
+    db.replaceAll('Fichas', []);
+    log(u.nombre, 'BORRADO MASIVO DE FICHAS', n + ' fichas eliminadas');
+    return { eliminadas: n };
+  };
   /* ------------------------------ despacho ----------------------------- */
   function handle(action, payload, token) {
     try {
@@ -1543,12 +2015,13 @@ function createCore(env) {
 
   return {
     handle: handle, setup: setup, importarRegistro: importarRegistro, HEADERS: HEADERS, FICHA_META: FICHA_META,
-    util: { etiquetaExport: etiquetaExport, rutFmt: rutFmt, rutValido: rutValido, rutKey: rutKey, nivelDe: nivelDe, cicloDe: cicloDe, norm: norm }
+    util: { normTel: normTel, telValido: telValido, cumple: cumple, visible: visible, mapaCampos: mapaCampos, nivelesPais: nivelesPais, NIVELES_CHILE: NIVELES_CHILE,
+      puebloConVitalidad: puebloConVitalidad, etiquetaExport: etiquetaExport, rutFmt: rutFmt, rutValido: rutValido, rutKey: rutKey, nivelDe: nivelDe, cicloDe: cicloDe, norm: norm }
   };
 }
 
 /* Utilidades de RUT y cursos para la página (no dependen de la base de datos). */
-var CoreUtil = createCore({ db: { all: function () { return []; } } }).util;
+var CoreUtil = createCore_({ db: { all: function () { return []; } } }).util;
 
 </script>
   <script>/* js/demo.js */
@@ -1594,7 +2067,8 @@ function crearBackendDemo() {
       get: function (k) { return sesiones[k] || null; },
       remove: function (k) { delete sesiones[k]; }
     },
-    mail: function (to, asunto, html) {
+    mail: function (to, asunto, html, extra) {
+      if (extra && extra.adjuntoNombre) html += '<div style="margin:10px;padding:10px 14px;border:1px dashed #b9c4dc;border-radius:10px;font-family:Arial;font-size:13px">📎 Adjunto: <b>' + extra.adjuntoNombre + '</b> (copia de la ficha en PDF)</div>';
       // En la demo no se envían correos: se muestra una vista previa (solo del primero si son varios seguidos).
       console.info('[DEMO] Correo simulado para', to, '·', asunto);
       if (!window.UI || !UI.modal) return;
@@ -1615,7 +2089,7 @@ function crearBackendDemo() {
     }
   };
 
-  var core = createCore(env);
+  var core = createCore_(env);
 
   if (!tabla('Campos').length) {
     core.setup({ adminNombre: 'Equipo Gestión Demo', adminRut: '11.111.111-1', adminEmail: 'gestion.demo@colegio.cl', adminClave: 'demo1234' });
@@ -1825,9 +2299,49 @@ var UI = (function () {
     var m = s.match(/^(\d+)[.)]\s*(.*)$/);
     return m ? { num: m[1], txt: m[2] } : { num: String(i + 1), txt: s };
   }
-  function campoHtml(c, v, editable) {
+  /* ---- teléfono: +56 separado del número (9 dígitos) u otro país ---- */
+  function telPartes(v) {
+    v = v ? CoreUtil.normTel(v) : '';
+    if (!v || /^\+56/.test(v)) {
+      var d = v.slice(3);
+      return { pais: '56', cod: '', num: d.length === 9 ? d.charAt(0) + ' ' + d.slice(1, 5) + ' ' + d.slice(5) : d };
+    }
+    var m = v.match(/^\+(\d{1,4}) (\d+)$/);
+    return m ? { pais: 'otro', cod: '+' + m[1], num: m[2] } : { pais: 'otro', cod: '', num: v.replace(/\D/g, '') };
+  }
+  function telHtml(c, v, dis, id) {
+    var p = telPartes(v), cl = p.pais === '56';
+    return '<div class="tel" data-tel>' +
+      '<select class="tel-pais" aria-label="Código de país"' + dis + '><option value="56"' + (cl ? ' selected' : '') + '>+56 Chile</option><option value="otro"' + (cl ? '' : ' selected') + '>🌎 Otro país</option></select>' +
+      '<input class="tel-cod' + (cl ? ' hidden' : '') + '" inputmode="tel" placeholder="+54" maxlength="5" value="' + esc(p.cod) + '" aria-label="Código del país"' + dis + '>' +
+      '<input class="tel-num" id="' + id + '" type="tel" inputmode="numeric" placeholder="' + (cl ? '9 1234 5678' : 'Número') + '" maxlength="' + (cl ? 11 : 16) + '" value="' + esc(p.num) + '"' + dis + '>' +
+      '<input type="hidden" data-field="' + esc(c.id) + '" value="' + esc(v ? CoreUtil.normTel(v) : '') + '"></div>' +
+      '<small class="help tel-help">' + (cl ? 'Escriba solo los 9 dígitos que van después del +56 (ej.: 9 1234 5678).' : 'Escriba el código de su país (ej.: +54) y su número.') + '</small>';
+  }
+  function telSync(box, alSalir) {
+    var pais = box.querySelector('.tel-pais').value, cod = box.querySelector('.tel-cod'), num = box.querySelector('.tel-num');
+    var cl = pais === '56', d = num.value.replace(/\D/g, ''), cd = cod.value.replace(/\D/g, '');
+    cod.classList.toggle('hidden', cl);
+    num.placeholder = cl ? '9 1234 5678' : 'Número'; num.maxLength = cl ? 11 : 16;
+    var help = box.parentNode.querySelector('.tel-help');
+    if (help) help.textContent = cl ? 'Escriba solo los 9 dígitos que van después del +56 (ej.: 9 1234 5678).' : 'Escriba el código de su país (ej.: +54) y su número.';
+    if (cl && d.length > 9 && d.indexOf('56') === 0) d = d.slice(2);
+    if (alSalir && cl && d.length === 9) num.value = d.charAt(0) + ' ' + d.slice(1, 5) + ' ' + d.slice(5);
+    var h = box.querySelector('[data-field]');
+    h.value = !d ? '' : cl ? '+56' + d : (cd ? '+' + cd + ' ' + d : '+' + d);
+    return h;
+  }
+  /* ---- último nivel aprobado según el país (tabla de equivalencias) ---- */
+  function opcionesNivel(pais, v) {
+    var ops = pais === 'Otro país' ? CoreUtil.NIVELES_CHILE.map(function (n) { return 'Equivale a ' + n + ' en Chile'; }) : CoreUtil.nivelesPais(pais);
+    if (v && ops.indexOf(v) < 0) ops.unshift(v);
+    return '<option value="">' + (pais ? 'Seleccione el último curso aprobado…' : 'Primero elija el país') + '</option>' +
+      ops.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+  }
+
+  function campoHtml(c, v, editable, datos) {
     var id = 'f_' + c.id, dis = editable ? '' : ' disabled', req = si(c.obligatorio) ? '<span class="req" title="Obligatorio">*</span>' : '';
-    var full = c.tipo === 'parrafo' || String(c.etiqueta).length > 60 ? ' full' : '', inp;
+    var full = c.tipo === 'parrafo' || c.tipo === 'nivel_pais' || String(c.etiqueta).length > 60 ? ' full' : '', inp, ayuda = c.ayuda;
     var base = ' id="' + id + '" data-field="' + esc(c.id) + '"' + dis;
     v = v === undefined || v === null ? '' : String(v);
     switch (c.tipo) {
@@ -1835,8 +2349,15 @@ var UI = (function () {
       case 'numero': inp = '<input type="number" inputmode="numeric"' + base + ' value="' + esc(v) + '">'; break;
       case 'fecha': inp = '<input type="date"' + base + ' value="' + esc(aISO(v)) + '">'; break;
       case 'email': inp = '<input type="email" autocomplete="email"' + base + ' value="' + esc(v) + '" placeholder="nombre@correo.cl">'; break;
-      case 'telefono': inp = '<input type="tel" inputmode="tel"' + base + ' value="' + esc(v) + '" placeholder="9 1234 5678">'; break;
+      case 'telefono': inp = telHtml(c, v, dis, id); break;
       case 'rut': inp = '<input type="text" data-rut' + base + ' value="' + esc(v) + '" placeholder="12345678-9" maxlength="12">'; break;
+      case 'multiple':
+        var marcados = v.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+        inp = '<div class="multi" data-multi>' + String(c.opciones || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean).map(function (o) {
+          return '<label class="chip-check"><input type="checkbox" value="' + esc(o) + '"' + (marcados.indexOf(o) >= 0 ? ' checked' : '') + dis + '><span>' + esc(o) + '</span></label>';
+        }).join('') + '<input type="hidden" id="' + id + '" data-field="' + esc(c.id) + '" value="' + esc(v) + '"></div>';
+        break;
+      case 'nivel_pais': inp = '<select' + base + ' data-nivelde="' + esc(c.opciones) + '">' + opcionesNivel((datos || {})[c.opciones] || '', v) + '</select>'; break;
       case 'lista':
         var ops = String(c.opciones || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
         if (v && ops.indexOf(v) < 0) ops.unshift(v);
@@ -1849,14 +2370,14 @@ var UI = (function () {
         break;
       default: inp = '<input type="text"' + base + ' value="' + esc(v) + '">';
     }
-    return '<div class="field' + full + '" data-wrap="' + esc(c.id) + '"><label for="' + id + '">' + esc(c.etiqueta) + req + '</label>' + inp +
-      (c.ayuda ? '<small class="help">' + esc(c.ayuda) + '</small>' : '') + '<div class="err-msg">Complete o corrija este dato</div></div>';
+    return '<div class="field' + full + '" data-wrap="' + esc(c.id) + '"' + (c.condicion ? ' data-cond="1"' : '') + '><label for="' + id + '">' + esc(c.etiqueta) + req + '</label>' + inp +
+      (ayuda ? '<small class="help">' + esc(ayuda) + '</small>' : '') + '<div class="err-msg">Complete o corrija este dato</div></div>';
   }
   function formHtml(campos, datos, editable) {
     return secciones(campos).map(function (s, i) {
       var t = tituloSeccion(s.nombre, i);
       return '<section class="card form-sec"><div class="card-h"><div class="sec-num">' + esc(t.num) + '</div><h3>' + esc(t.txt) + '</h3></div><div class="grid">' +
-        s.campos.map(function (c) { return campoHtml(c, datos[c.id], editable(c)); }).join('') + '</div></section>';
+        s.campos.map(function (c) { return campoHtml(c, datos[c.id], editable(c), datos); }).join('') + '</div></section>';
     }).join('');
   }
   function leer(root) {
@@ -1868,29 +2389,62 @@ var UI = (function () {
     });
     return o;
   }
+  /* Muestra u oculta los datos según sus condiciones y actualiza las listas de nivel por país. */
+  function aplicarCondiciones(root) {
+    var campos = (S.form && S.form.campos) || [], mapa = CoreUtil.mapaCampos(campos), datos = leer(root);
+    $$('[data-wrap][data-cond]', root).forEach(function (w) {
+      var c = mapa[w.dataset.wrap];
+      w.classList.toggle('oculto', !!c && !CoreUtil.visible(c, datos, mapa));
+    });
+    $$('select[data-nivelde]', root).forEach(function (sel) {
+      var pais = datos[sel.dataset.nivelde] || '';
+      if (sel.dataset.pais === pais) return;
+      sel.dataset.pais = pais;
+      sel.innerHTML = opcionesNivel(pais, sel.value);
+    });
+  }
   function enlazar(root, onChange) {
+    aplicarCondiciones(root);
     root.addEventListener('input', function (e) {
+      var box = e.target.closest('[data-tel]');
+      if (box) { var h = telSync(box, false); var w0 = box.closest('.field'); if (w0) w0.classList.remove('error'); onChange(h.dataset.field); return; }
       var el = e.target.closest('[data-field]'); if (!el) return;
       var w = el.closest('.field'); if (w) w.classList.remove('error');
       if (el.type !== 'radio' && el.tagName !== 'SELECT') onChange(el.dataset.field);
     });
     root.addEventListener('change', function (e) {
+      var multi = e.target.closest('[data-multi]');
+      if (multi) {
+        var hm = multi.querySelector('[data-field]');
+        hm.value = $$('input[type=checkbox]:checked', multi).map(function (x) { return x.value; }).join(', ');
+        var wm = multi.closest('.field'); if (wm) wm.classList.remove('error');
+        aplicarCondiciones(root); onChange(hm.dataset.field); return;
+      }
+      var box = e.target.closest('[data-tel]');
+      if (box) {
+        var h = telSync(box, true);
+        if (h.value && !CoreUtil.telValido(h.value)) { box.closest('.field').classList.add('error'); toast(box.querySelector('.tel-pais').value === '56' ? 'El teléfono debe tener 9 dígitos después del +56' : 'Revise el código de país y el número', 'bad'); }
+        onChange(h.dataset.field); aplicarCondiciones(root); return;
+      }
       var el = e.target.closest('[data-field]'); if (!el) return;
       if (el.hasAttribute('data-rut') && el.value.trim()) {
         el.value = CoreUtil.rutFmt(el.value);
         if (!CoreUtil.rutValido(el.value)) { el.closest('.field').classList.add('error'); toast('El RUT ingresado no es válido', 'bad'); }
       }
+      aplicarCondiciones(root);
       onChange(el.dataset.field);
     });
   }
   function validar(campos, datos, soloFamilia) {
-    var out = [];
+    var out = [], mapa = CoreUtil.mapaCampos((S.form && S.form.campos) || campos);
     campos.forEach(function (c) {
       if (soloFamilia && !si(c.editableFamilia)) return;
+      if (!CoreUtil.visible(c, datos, mapa)) return;
       var v = String(datos[c.id] || '').trim();
       if (!v) { if (si(c.obligatorio)) out.push({ id: c.id, etiqueta: c.etiqueta, seccion: c.seccion }); return; }
       if (c.tipo === 'rut' && !CoreUtil.rutValido(v)) out.push({ id: c.id, etiqueta: c.etiqueta + ' (RUT no válido)', seccion: c.seccion });
       if (c.tipo === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) out.push({ id: c.id, etiqueta: c.etiqueta + ' (correo no válido)', seccion: c.seccion });
+      if (c.tipo === 'telefono' && !CoreUtil.telValido(v)) out.push({ id: c.id, etiqueta: c.etiqueta + ' (teléfono: +56 y 9 dígitos)', seccion: c.seccion });
     });
     return out;
   }
@@ -1899,6 +2453,29 @@ var UI = (function () {
     lista.forEach(function (f) { var w = root.querySelector('[data-wrap="' + CSS.escape(f.id) + '"]'); if (w) w.classList.add('error'); });
   }
 
+  /* Calendario de matrícula: días y horarios por ciclo, visible para familias y funcionarios. */
+  function calendarioHtml(cfg, destacar) {
+    var items = [];
+    try { items = JSON.parse(cfg.calendario || '[]') || []; } catch (e) { items = []; }
+    var ap = String(cfg.fechaApertura || '').replace('T', ' '), ci = String(cfg.fechaCierre || '').replace('T', ' ');
+    if (!items.length && !ap && !ci) return '';
+    var DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'], MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    function fmt(v) { var m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}:\d{2}))?/); return m ? m[3] + '/' + m[2] + '/' + m[1] + (m[4] ? ' · ' + m[4] + ' h' : '') : v; }
+    items.sort(function (a, b) { return (a.fecha + a.desde) < (b.fecha + b.desde) ? -1 : 1; });
+    var tarjetas = items.map(function (it) {
+      var d = new Date(it.fecha + 'T12:00:00'), valida = !isNaN(d.getTime()), pasado = valida && d < hoy;
+      var mio = destacar && (it.ciclo === destacar || it.ciclo === 'Todos los ciclos');
+      return '<div class="cal-item' + (mio ? ' mio' : '') + (pasado ? ' pasado' : '') + '">' +
+        '<div class="cal-dia"><b>' + (valida ? d.getDate() : '') + '</b><span>' + (valida ? MESES[d.getMonth()] : '') + '</span></div>' +
+        '<div class="cal-info"><div class="cal-ciclo">' + esc(it.ciclo || '') + (mio ? ' <span class="badge b-gold">Su ciclo</span>' : '') + '</div>' +
+        '<div class="cal-hora">' + (valida ? DIAS[d.getDay()] + ' · ' : '') + esc(it.desde || '') + (it.hasta ? '–' + esc(it.hasta) : '') + ' h</div>' +
+        (it.lugar ? '<div class="cal-lugar">📍 ' + esc(it.lugar) + '</div>' : '') + '</div></div>';
+    }).join('');
+    return '<section class="calendario"><div class="cal-h"><div><div class="eyebrow">📅 Proceso de matrícula ' + esc(cfg.anio || '') + '</div>' +
+      '<div class="cal-plazo">' + (ap ? 'Abre: <b>' + esc(fmt(ap)) + '</b>' : '') + (ap && ci ? ' &nbsp;·&nbsp; ' : '') + (ci ? 'Cierra: <b>' + esc(fmt(ci)) + '</b>' : '') + '</div></div></div>' +
+      (tarjetas ? '<div class="cal-lista">' + tarjetas + '</div>' : '') + '</section>';
+  }
   /* ---------------- otros ---------------- */
   function iniciales(n) { return String(n || '?').split(' ').filter(Boolean).slice(0, 2).map(function (x) { return x.charAt(0); }).join('').toUpperCase(); }
   function nombreEst(f) { return [f.est_apellido_paterno, f.est_apellido_materno].filter(Boolean).join(' ') + ', ' + (f.est_nombres || ''); }
@@ -1926,7 +2503,7 @@ var UI = (function () {
   return {
     esc: esc, $: $, $$: $$, si: si, sleep: sleep, debounce: debounce, api: api, loading: loading, done: done, toast: toast,
     modal: modal, success: success, error: error, info: info, confirm: confirm, intentar: intentar, faltantes: faltantes, resaltar: resaltar,
-    formHtml: formHtml, leer: leer, enlazar: enlazar, validar: validar, marcarErrores: marcarErrores, secciones: secciones,
+    formHtml: formHtml, calendarioHtml: calendarioHtml, leer: leer, enlazar: enlazar, validar: validar, marcarErrores: marcarErrores, secciones: secciones,
     aISO: aISO, fechaLarga: fechaLarga, iniciales: iniciales, nombreEst: nombreEst, nombreApo: nombreApo, badgeEstado: badgeEstado,
     archivoBase64: archivoBase64, leerExcel: leerExcel
   };
@@ -1966,6 +2543,10 @@ var Doc = (function () {
   function valor(c, f) {
     var v = f[c.id];
     if (c.tipo === 'fecha') v = UI.fechaLarga(v);
+    if (c.tipo === 'telefono' && v) {
+      var t = CoreUtil.normTel(v);
+      v = /^\+56\d{9}$/.test(t) ? '+56 ' + t.charAt(3) + ' ' + t.slice(4, 8) + ' ' + t.slice(8) : t;
+    }
     return v ? esc(v) : '<span style="color:#999">—</span>';
   }
   function firmas(f, conDireccion) {
@@ -1981,7 +2562,8 @@ var Doc = (function () {
     h += '<table class="dt"><tr><td class="k">Estudiante</td><td class="v" colspan="3"><b>' + esc([f.est_nombres, f.est_apellido_paterno, f.est_apellido_materno].filter(Boolean).join(' ')) + '</b></td></tr>' +
       '<tr><td class="k">Nivel ' + esc(cfg.anio) + '</td><td class="v"><b>' + esc(f.curso) + '</b></td><td class="k">Curso de procedencia</td><td class="v">' + esc(f.cursoAnterior || 'Estudiante nuevo/a') + '</td></tr>' +
       '<tr><td class="k">Estado</td><td class="v">' + esc((S.form.estados || {})[f.estado] || f.estado) + '</td><td class="k">Matrícula registrada</td><td class="v">' + esc(f.fechaMatricula || '—') + '</td></tr></table>';
-    UI.secciones(S.form.campos).forEach(function (s) {
+    var mapa = CoreUtil.mapaCampos(S.form.campos);
+    UI.secciones(S.form.campos.filter(function (c) { return CoreUtil.visible(c, f, mapa); })).forEach(function (s) {
       h += '<h4>' + esc(s.nombre) + '</h4><table class="dt">';
       var fila = [];
       s.campos.forEach(function (c) {
@@ -2088,8 +2670,10 @@ var Familia = (function () {
 
   function actualizando() { return !!String(F.editFamilia || '').trim() && (F.estado === 'enviada' || F.estado === 'matriculada'); }
   function pedidos() { var e = actualizando() ? String(F.editFamilia).trim() : ''; return e && e !== 'TODOS' ? e.split(',') : null; }
+  function fueraDePlazo() { return !!F.ventana && !F.ventana.abierta && !String(F.editFamilia || '').trim(); }
   function bloqueada() {
     if (F.estado === 'retirado') return true;
+    if (fueraDePlazo()) return true;
     if (actualizando()) return false;
     return ['enviada', 'matriculada'].indexOf(F.estado) >= 0;
   }
@@ -2105,7 +2689,8 @@ var Familia = (function () {
   }
 
   function progreso() {
-    var req = camposFam().filter(function (c) { return UI.si(c.obligatorio); }), docs = docsReq();
+    var mapa = CoreUtil.mapaCampos(S.form.campos);
+    var req = camposFam().filter(function (c) { return UI.si(c.obligatorio) && CoreUtil.visible(c, F, mapa); }), docs = docsReq();
     var total = req.length + docs.length, ok = 0;
     req.forEach(function (c) { if (String(F[c.id] || '').trim()) ok++; });
     docs.forEach(function (d) { if ((F.aceptaciones || {})[d.id]) ok++; });
@@ -2118,14 +2703,37 @@ var Familia = (function () {
     var t = UI.$('#cnt-docs'); if (t) t.textContent = leidos + '/' + docsReq().length;
   }
 
+  function botonSolicitud() {
+    return F.solicitudPendiente ? '<div style="margin-top:10px"><span class="badge b-gold" style="font-size:13px;padding:6px 12px">⏳ Solicitud de corrección enviada · en revisión</span></div>' :
+      '<div style="margin-top:10px"><button class="btn sm gold" id="btn-solicitar">✏️ Solicitar corrección de datos</button></div>';
+  }
+  async function solicitarCorreccion() {
+    var motivo = await UI.modal({
+      title: '✏️ Solicitar corrección de la ficha',
+      html: '<p class="muted" style="margin-top:0">Cuéntenos qué dato necesita corregir. El Equipo de Gestión revisará su solicitud y, si la autoriza, le llegará un correo y podrá modificar la ficha.</p>' +
+        '<div class="field"><label>¿Qué necesita corregir?</label><textarea id="sol-motivo" rows="3" placeholder="Ej.: cambió el teléfono del apoderado y la dirección"></textarea></div>',
+      buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: '📨 Enviar solicitud', cls: 'gold', onClick: function (el) {
+        var v = el.querySelector('#sol-motivo').value.trim();
+        if (v.length < 5) { UI.toast('Describa brevemente qué desea corregir', 'bad'); return false; }
+        return v;
+      } }]
+    });
+    if (!motivo) return;
+    var r = await UI.intentar(function () { return UI.api('solicitarApertura', { motivo: motivo }); }, 'Enviando solicitud…');
+    if (!r) return;
+    F.solicitudPendiente = true; render();
+    UI.success('Solicitud enviada', 'El Equipo de Gestión revisará su solicitud. Cuando sea autorizada, le llegará un aviso a su correo y podrá corregir la ficha.');
+  }
+
   function render() {
     var cfg = S.form.config, lock = bloqueada(), act = actualizando(), ped = pedidos();
     var nombresPedidos = ped ? S.form.campos.filter(function (c) { return ped.indexOf(c.id) >= 0; }).map(function (c) {
       var repetida = S.form.campos.filter(function (x) { return x.etiqueta === c.etiqueta; }).length > 1;
       return c.etiqueta + (repetida ? ' (' + c.seccion.replace(/^\d+[.)]\s*/, '') + ')' : '');
     }) : null;
+    var w = F.ventana || {}, enviada = F.estado === 'enviada' && !actualizando();
     var html = App.topbar(nombre(), 'Apoderado/a · ' + F.curso) +
-      '<div class="wrap">' +
+      '<div class="wrap">' + UI.calendarioHtml(cfg, F.ciclo) +
       '<section class="card welcome"><div class="ring" id="ring" style="--p:0"><span>0%</span></div><div class="grow" style="position:relative;z-index:1">' +
       '<div class="eyebrow">Ficha de matrícula ' + esc(cfg.anio) + '</div>' +
       '<h2>' + esc(nombre()) + '</h2><div class="row small"><span class="badge b-blue">RUT ' + esc(F.rut) + '</span><span class="badge b-gold">Nivel ' + esc(cfg.anio) + ': ' + esc(F.curso) + '</span>' +
@@ -2134,8 +2742,13 @@ var Familia = (function () {
       (act ? '<div class="update-banner"><div class="ico">✏️</div><div><b class="t">El establecimiento solicita actualizar ' + (ped ? 'estos datos' : 'los datos de la ficha') + '</b><br>' +
         '<span class="muted">Los datos ya registrados se mantienen: solo modifique lo que haya cambiado (dirección, teléfono, correo, apoderado/a suplente, etc.) y presione «Enviar datos actualizados».</span>' +
         (nombresPedidos ? '<div class="chips">' + nombresPedidos.map(function (n) { return '<span class="badge b-gold">' + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></div>' : '') +
+      (fueraDePlazo() ? '<div class="lock-banner" style="background:linear-gradient(120deg,#fff4d6,#fffaf0);border-color:#f0d27a"><div class="ico">' + (w.motivo === 'antes' ? '⏳' : '📅') + '</div><div><b style="color:#8a5d00">' +
+        (w.motivo === 'antes' ? 'El proceso de matrícula comienza el ' + esc(w.fechaTxt) : 'El plazo para completar la ficha terminó el ' + esc(w.fechaTxt)) + '</b><br><span class="muted">' +
+        (w.motivo === 'antes' ? 'Podrá revisar los datos, pero completarlos y enviarlos se habilitará en esa fecha.' : 'Si necesita completarla o corregirla, comuníquese con el establecimiento o solicite una apertura.') + '</span>' +
+        (w.motivo !== 'antes' ? botonSolicitud() : '') + '</div></div>' :
+      (w.especial && !lock ? '<div class="update-banner"><div class="ico">⏰</div><div><b class="t">Plazo especial para su ficha: hasta el ' + esc(w.hastaTxt) + '</b><br><span class="muted">El establecimiento le otorgó un plazo para completar la matrícula.</span></div></div>' : '') +
       (lock ? '<div class="lock-banner"><div class="ico">🔒</div><div><b>' + (F.estado === 'matriculada' ? 'Estudiante matriculado/a' + (F.numeroMatricula ? ' · N° ' + esc(F.numeroMatricula) : '') : 'Ficha enviada' + (F.fechaEnvio ? ' el ' + esc(F.fechaEnvio) : '')) + '</b><br>' +
-        '<span class="muted">Los datos ya fueron registrados y <b>no pueden modificarse</b>. Si necesita corregir algo, comuníquese con el establecimiento: solo el equipo puede autorizar la reapertura de la ficha.</span></div></div>' : '') +
+        '<span class="muted">Los datos ya fueron registrados y <b>no pueden modificarse</b>. Si necesita corregir algo, solicite una corrección: el Equipo de Gestión la revisará y le avisará por correo.</span>' + (enviada || F.estado === 'matriculada' ? botonSolicitud() : '') + '</div></div>' : '')) +
       '<div class="subtabs"><button class="subtab" data-tab="ficha">📋 Ficha de matrícula</button><button class="subtab" data-tab="docs">📚 Documentos del colegio <span class="badge b-blue" id="cnt-docs"></span></button></div>' +
       '<div id="tab-ficha"><p class="muted small" style="margin:-4px 0 12px">Los datos marcados con <span class="req">*</span> son obligatorios. Los campos en gris solo pueden ser modificados por el establecimiento.</p>' +
       UI.formHtml(S.form.campos.filter(function (c) { return !/uso interno/i.test(c.seccion); }), F, editable) + '</div>' +
@@ -2168,6 +2781,7 @@ var Familia = (function () {
       UI.modal({ title: esc(d.titulo), size: 'wide', html: '<div class="carta-text">' + esc(Doc.reemplazar(d.contenido, F)) + '</div>', buttons: [{ text: 'Cerrar', cls: 'ghost', value: true }] });
     });
     var be = UI.$('#btn-enviar'); if (be) be.addEventListener('click', enviar);
+    var bs = UI.$('#btn-solicitar'); if (bs) bs.addEventListener('click', solicitarCorreccion);
   }
 
   function docsHtml(lock) {
@@ -2250,8 +2864,8 @@ var Familia = (function () {
     F = await UI.api('miFicha');
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (r.actualizacion) return UI.success('¡Datos actualizados!', 'Los cambios en la ficha de <b>' + esc(nombre()) + '</b> quedaron registrados el ' + esc(r.fecha) + '.<br><br>🔒 La ficha vuelve a quedar cerrada. ¡Gracias por mantener sus datos al día!', { boton: 'Perfecto' });
-    UI.success('¡Ficha guardada y enviada!', 'Los datos de <b>' + esc(nombre()) + '</b> quedaron registrados correctamente el ' + esc(r.fecha) + '.<br><br>🔒 Desde ahora la ficha <b>no puede modificarse</b>. Si necesita realizar un cambio, comuníquese con el establecimiento: solo el equipo puede autorizar su reapertura.', { boton: 'Perfecto' });
+    if (r.actualizacion) return UI.success('¡Datos actualizados!', 'Los cambios en la ficha de <b>' + esc(nombre()) + '</b> quedaron registrados el ' + esc(r.fecha) + '.' + (r.correoEnviado ? '<br>📧 Enviamos una copia actualizada a ' + esc(r.correo) + '.' : '') + '<br><br>🔒 La ficha vuelve a quedar cerrada. ¡Gracias por mantener sus datos al día!', { boton: 'Perfecto' });
+    UI.success('¡Ficha guardada y enviada!', 'Los datos de <b>' + esc(nombre()) + '</b> quedaron registrados correctamente el ' + esc(r.fecha) + '.' + (r.correoEnviado ? '<br>📧 Enviamos una copia de la ficha a ' + esc(r.correo) + '.' : '') + '<br><br>🔒 Desde ahora la ficha <b>no puede modificarse</b>. Si necesita realizar un cambio, comuníquese con el establecimiento: solo el equipo puede autorizar su reapertura.', { boton: 'Perfecto' });
   }
 
   return { iniciar: iniciar };
@@ -2265,7 +2879,7 @@ var Familia = (function () {
 var Staff = (function () {
   'use strict';
   var esc = UI.esc, P = null, fichas = [], filtro = { curso: '', estado: '', q: '' }, vista = 'fichas', ed = null, admin = null;
-  var TIPOS = { texto: 'Texto corto', parrafo: 'Texto largo', numero: 'Número', fecha: 'Fecha', email: 'Correo electrónico', telefono: 'Teléfono', rut: 'RUT', lista: 'Lista de opciones', si_no: 'Sí / No' };
+  var TIPOS = { texto: 'Texto corto', parrafo: 'Texto largo', numero: 'Número', fecha: 'Fecha', email: 'Correo electrónico', telefono: 'Teléfono', rut: 'RUT', lista: 'Lista de opciones', si_no: 'Sí / No', nivel_pais: 'Nivel según país (equivalencias)' };
   var COLOR_CICLO = { 'Preescolar': '#e07a2f', 'Primer Ciclo': '#1f5fbf', 'Segundo Ciclo': '#18915a', 'Enseñanza Media': '#7a3fc0', 'Otro': '#7d8aa3' };
 
   function gestion() { return P.rol === 'gestion'; }
@@ -2285,13 +2899,14 @@ var Staff = (function () {
     P = S.perfil;
     S.form = await UI.api('formulario');
     var nav = [['fichas', '📋', 'Fichas de matrícula'], ['estadisticas', '📊', 'Resumen estadístico']];
-    var navG = [['usuarios', '👥', 'Usuarios'], ['formulario', '🧩', 'Datos de la ficha'], ['documentos', '📚', 'Reglamentos y cartas'], ['config', '⚙️', 'Configuración'], ['bitacora', '🕘', 'Bitácora']];
+    var navG = [['solicitudes', '📨', 'Solicitudes'], ['usuarios', '👥', 'Usuarios'], ['formulario', '🧩', 'Datos de la ficha'], ['documentos', '📚', 'Reglamentos y cartas'], ['config', '⚙️', 'Configuración'], ['bitacora', '🕘', 'Bitácora']];
     function item(n) { return '<button class="nav-item" data-nav="' + n[0] + '"><span class="ni">' + n[1] + '</span>' + n[2] + '</button>'; }
     UI.$('#app').innerHTML = App.topbar(P.nombre, P.rolNombre + (gestion() ? '' : ' · ' + (P.cursos.join(', ') || 'sin cursos asignados'))) +
       '<div class="layout"><nav class="sidebar">' + nav.map(item).join('') + (gestion() ? '<div class="nav-sep">Equipo de Gestión</div>' + navG.map(item).join('') : '') +
       '<div class="nav-sep">Ayuda</div><button class="nav-item" data-nav="tutorial"><span class="ni">🎬</span>Video tutorial</button></nav><main class="main" id="main"></main></div>';
     App.enlazarTopbar();
     UI.$('.sidebar').addEventListener('click', function (e) { var b = e.target.closest('[data-nav]'); if (b) ir(b.dataset.nav); });
+    contarSolicitudes();
     await ir('fichas');
   }
 
@@ -2310,6 +2925,7 @@ var Staff = (function () {
       else if (v === 'documentos') await vDocumentos();
       else if (v === 'config') await vConfig();
       else if (v === 'bitacora') await vBitacora();
+      else if (v === 'solicitudes') await vSolicitudes();
     } catch (e) {
       main().innerHTML = '<div class="empty"><div class="e-ico">⚠️</div><p>' + esc(e.userMsg || e.message) + '</p></div>';
     }
@@ -2324,9 +2940,9 @@ var Staff = (function () {
     var cursos = [], anio = S.form.config.anio;
     ordenarPorGrupo().forEach(function (f) { var g = grupoDe(f); if (cursos.indexOf(g) < 0) cursos.push(g); });
     if (cursos.indexOf(filtro.curso) < 0) filtro.curso = '';
-    main().innerHTML = '<div class="page-h"><div><div class="eyebrow">Proceso de matrícula ' + esc(anio) + '</div><h2>Fichas de matrícula</h2></div><span class="badge b-blue">' + fichas.length + ' estudiantes</span><span class="grow"></span>' +
+    main().innerHTML = UI.calendarioHtml(S.form.config, '') + '<div class="page-h"><div><div class="eyebrow">Proceso de matrícula ' + esc(anio) + '</div><h2>Fichas de matrícula</h2></div><span class="badge b-blue">' + fichas.length + ' estudiantes</span><span class="grow"></span>' +
       '<button class="btn gold" data-a="nueva">➕ Nuevo estudiante</button>' +
-      (gestion() ? '<button class="btn ghost" data-a="habilitar">🔓 Habilitar edición</button><button class="btn ghost" data-a="importar">📥 Cargar / actualizar base</button><button class="btn ghost" data-a="descargar">⬇ Descargar base de datos</button>' :
+      (gestion() ? '<button class="btn ghost" data-a="habilitar">🔓 Habilitar edición</button><button class="btn ghost" data-a="importar">📥 Cargar / actualizar base</button><button class="btn ghost" data-a="descargar">⬇ Descargar base de datos</button><button class="btn bad" data-a="borrar-todo" title="Eliminar todas las fichas">🗑 Eliminar todas</button>' :
         '<button class="btn ghost" data-a="exportar">⬇ Exportar Excel</button>') + '</div>' +
       '<div class="toolbar"><div class="seg" id="fl-agr"><button data-g="nivel" class="' + (filtro.agrupar === 'nivel' ? 'active' : '') + '">Por nivel ' + esc(anio) + '</button><button data-g="anterior" class="' + (filtro.agrupar === 'anterior' ? 'active' : '') + '">Por curso de procedencia</button></div>' +
       '<select id="fl-curso"><option value="">' + (filtro.agrupar === 'anterior' ? 'Todos los cursos' : 'Todos los niveles') + '</option>' + cursos.map(function (c) { return '<option' + (c === filtro.curso ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
@@ -2402,6 +3018,7 @@ var Staff = (function () {
     else if (a === 'exportar') exportarExcel(filtradas(), 'una');
     else if (a === 'descargar') descargarBase();
     else if (a === 'habilitar') modalHabilitar(null);
+    else if (a === 'borrar-todo') borrarTodo();
   }
 
   function nuevaFicha() {
@@ -2416,13 +3033,14 @@ var Staff = (function () {
         '<div class="field"><label>Apellido paterno<span class="req">*</span></label><input id="n-pat"></div>' +
         '<div class="field"><label>Apellido materno</label><input id="n-mat"></div>' +
         '<div class="field"><label>Fecha de nacimiento<span class="req">*</span></label><input id="n-nac" type="date"></div>' +
-        '<div class="field"><label>Sexo</label><select id="n-sexo"><option value="">Seleccione…</option><option>Femenino</option><option>Masculino</option><option>Otro</option></select></div></div>',
+        '<div class="field"><label>Sexo</label><select id="n-sexo"><option value="">Seleccione…</option><option>Femenino</option><option>Masculino</option><option>Otro</option></select></div>' +
+        (gestion() ? '<div class="field"><label>Plazo especial para que la familia complete la ficha</label><input id="n-plazo" type="date"><small class="help">Para estudiantes nuevos que ingresan fuera del período general.</small></div>' : '') + '</div>',
       buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, {
         text: 'Crear ficha', cls: 'ok', onClick: async function (el) {
           var v = function (id) { return el.querySelector(id).value.trim(); };
           if (!CoreUtil.rutValido(v('#n-rut'))) { UI.toast('El RUT no es válido', 'bad'); return false; }
           try {
-            var f = await UI.api('crearFicha', { rut: v('#n-rut'), curso: v('#n-curso'), cursoAnterior: v('#n-ant'), datos: { est_nombres: v('#n-nom').toUpperCase(), est_apellido_paterno: v('#n-pat').toUpperCase(), est_apellido_materno: v('#n-mat').toUpperCase(), est_fecha_nacimiento: v('#n-nac'), est_sexo: v('#n-sexo') } });
+            var f = await UI.api('crearFicha', { rut: v('#n-rut'), curso: v('#n-curso'), cursoAnterior: v('#n-ant'), fechaLimite: gestion() ? v('#n-plazo') : '', datos: { est_nombres: v('#n-nom').toUpperCase(), est_apellido_paterno: v('#n-pat').toUpperCase(), est_apellido_materno: v('#n-mat').toUpperCase(), est_fecha_nacimiento: v('#n-nac'), est_sexo: v('#n-sexo') } });
             return f;
           } catch (e) { UI.toast(e.userMsg || e.message, 'bad'); return false; }
         }
@@ -2683,6 +3301,7 @@ var Staff = (function () {
       '<div><label>Clave de la familia</label><div class="meta-v">' + (f.claveCambiada ? 'Personalizada' : 'Inicial (fecha de nacimiento)') + (UI.si(f.debeCambiarClave) ? ' · <span class="badge b-gold">cambio solicitado</span>' : '') + '</div></div>' +
       '<div><label>Enviada por la familia</label><div class="meta-v">' + esc(f.fechaEnvio || '—') + (f.fechaActualizacion ? '<div class="small muted">Actualizada: ' + esc(f.fechaActualizacion) + '</div>' : '') + '</div></div>' +
       '<div><label>Última modificación</label><div class="meta-v">' + esc(f.ultimaModificacion || '—') + '<div class="small muted">' + esc(f.modificadoPor || '') + '</div></div></div>' +
+      (gestion() ? '<div><label for="m-plazo">Plazo especial familia</label><input id="m-plazo" type="date" value="' + esc(String(f.fechaLimite || '').slice(0, 10)) + '"></div>' : (f.fechaLimite ? '<div><label>Plazo especial familia</label><div class="meta-v">' + esc(f.fechaLimite) + '</div></div>' : '')) +
       '<div style="grid-column:1/-1"><label>Matrícula registrada por</label><div class="meta-v">' + (f.matriculadoPorNombre ? esc(f.matriculadoPorNombre) + ' · RUT ' + esc(f.matriculadoPorRut) + ' · ' + esc(f.fechaMatricula) : '— (pendiente)') + '</div></div>' +
       '</div></section><div id="ed-form" style="margin-top:18px">' + UI.formHtml(S.form.campos, f, function () { return puede; }) + '</div>' +
       '<section class="card" style="margin-top:18px"><div class="card-h"><div class="sec-num">📚</div><h3>Toma de conocimiento de documentos</h3></div>' +
@@ -2696,6 +3315,7 @@ var Staff = (function () {
       (puede ? '<button class="btn" data-e="guardar">💾 Guardar cambios</button>' : '') +
       (!mat ? '<button class="btn ok" data-e="matricular">✅ Cerrar matrícula</button>' : '') +
       '<button class="btn ghost" data-e="imprimir">🖨 Imprimir</button><button class="btn ghost" data-e="pdf">⬇ PDF</button><button class="btn wa" data-e="wa">💬 WhatsApp</button>' +
+      (!puede ? '<button class="btn gold" data-e="pedir-apertura">📨 Solicitar apertura a Gestión</button>' : '') +
       (gestion() ? '<button class="btn gold" data-e="habilitar">🔓 Habilitar edición</button>' + (abierta ? '<button class="btn ghost" data-e="cerrar-edicion">🔒 Cerrar edición</button>' : '') : '') +
       '<button class="btn ghost" data-e="clave">🔑 Clave familia</button>' +
       (gestion() ? '<button class="btn bad" data-e="eliminar" title="Eliminar ficha">🗑</button>' : '') + '</div>';
@@ -2708,6 +3328,7 @@ var Staff = (function () {
     UI.$('#m-ant').onchange = function () { guardarMeta({ cursoAnterior: this.value }, 'Curso de procedencia actualizado'); };
     UI.$('#m-estado').onchange = function () { guardarMeta({ estado: this.value }, 'Estado actualizado'); };
     var num = UI.$('#m-num'); if (num) num.onchange = function () { guardarMeta({ numeroMatricula: this.value }, 'N° de matrícula actualizado'); };
+    var plazo = UI.$('#m-plazo'); if (plazo) plazo.onchange = function () { guardarMeta({ fechaLimite: this.value }, this.value ? 'Plazo especial guardado' : 'Plazo especial quitado'); };
     main().onclick = clickEditor;
     main().onchange = function (e) {
       var c = e.target.closest('[data-acc]'); if (!c) return;
@@ -2766,7 +3387,7 @@ var Staff = (function () {
       var falta2 = UI.validar(S.form.campos, UI.leer(root), false);
       UI.marcarErrores(root, falta2);
       if (falta2.length) return UI.faltantes(falta2, function (it) { UI.resaltar(it.id); }, 'No se puede cerrar la matrícula');
-      var sug = await UI.intentar(function () { return UI.api('siguienteNumero'); }, 'Preparando…');
+      var sug = await UI.intentar(function () { return UI.api('siguienteNumero', { rut: f.rut }); }, 'Preparando…');
       if (sug === undefined) return;
       var anio = S.form.config.anio;
       var r = await UI.modal({
@@ -2776,13 +3397,14 @@ var Staff = (function () {
           '<div class="field"><label>Estudiante</label><div class="meta-v" style="padding-top:8px">' + esc(nombreCompleto(f)) + '<div class="small muted">RUT ' + esc(f.rut) + '</div></div></div>' +
           '<div class="field"><label>Curso de procedencia</label><div class="meta-v">' + esc(f.cursoAnterior || 'Estudiante nuevo') + '</div></div>' +
           '<div class="field"><label>Se matricula en (' + esc(anio) + ')</label><div class="meta-v">' + esc(f.curso || '—') + '</div></div></div>' +
-          '<div class="hint" style="margin-top:16px;background:var(--ok-bg);border-left:4px solid var(--ok);padding:10px 12px;border-radius:8px">Quedará registrado que <b>' + esc(P.nombre) + '</b> (RUT ' + esc(P.rut) + ') realizó la matrícula. Su nombre y RUT aparecerán en el espacio de firma del documento oficial, y la ficha quedará cerrada.</div>',
+          '<div class="hint" style="margin-top:16px;background:var(--ok-bg);border-left:4px solid var(--ok);padding:10px 12px;border-radius:8px">Quedará registrado que <b>' + esc(P.nombre) + '</b> (RUT ' + esc(P.rut) + ') realizó la matrícula. Su nombre y RUT aparecerán en el espacio de firma del documento oficial, y la ficha quedará cerrada.</div>' +
+          '<label class="check" style="margin-top:12px"><input type="checkbox" id="mt-copia" checked> <span>📧 Enviar copia de la ficha al correo del apoderado/a (' + esc(f.apo_email || 'sin correo registrado') + ')</span></label>',
         buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, {
           text: '✅ Matricular', cls: 'ok', onClick: async function (el) {
             var n = el.querySelector('#mt-num').value.trim();
             if (!n) { UI.toast('Ingrese el N° de matrícula', 'bad'); return false; }
             if (!f.curso) { UI.toast('Primero seleccione el nivel al que se matricula', 'bad'); return false; }
-            try { return await UI.api('registrarMatricula', { rut: f.rut, numero: n }); } catch (e) { UI.toast(e.userMsg || e.message, 'bad'); return false; }
+            try { return await UI.api('registrarMatricula', { rut: f.rut, numero: n, enviarCopia: el.querySelector('#mt-copia').checked }); } catch (e) { UI.toast(e.userMsg || e.message, 'bad'); return false; }
           }
         }]
       });
@@ -2792,13 +3414,20 @@ var Staff = (function () {
       var imp = await UI.modal({
         center: true, title: '¡Matrícula N° ' + esc(r.ficha.numeroMatricula) + ' registrada!',
         iconHtml: '<div class="m-icon success"><svg class="checkmark" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M14 27l8 8 16-16"/></svg></div>',
-        html: '<p class="muted" style="font-size:15.5px"><b>' + esc(nombreCompleto(f)) + '</b> quedó matriculado/a en <b>' + esc(r.ficha.curso) + '</b>.<br>¿Desea imprimir la ficha para las firmas?</p>',
+        html: '<p class="muted" style="font-size:15.5px"><b>' + esc(nombreCompleto(f)) + '</b> quedó matriculado/a en <b>' + esc(r.ficha.curso) + '</b>.' + (r.correoEnviado ? '<br>📧 Se envió una copia de la ficha al apoderado/a.' : '') + '<br>¿Desea imprimir la ficha para las firmas?</p>',
         buttons: [{ text: 'Más tarde', cls: 'ghost', value: false }, { text: '🖨 Imprimir ficha', cls: 'ok', value: true }]
       });
       if (imp) Doc.imprimir([ed.f]);
       return;
     }
     if (a === 'habilitar') return modalHabilitar(f);
+    if (a === 'pedir-apertura') {
+      var mot = await UI.modal({ title: '📨 Solicitar apertura de la ficha', html: '<p class="muted" style="margin-top:0">La ficha está cerrada. Indique qué necesita corregir; el Equipo de Gestión revisará la solicitud.</p><div class="field"><label>Motivo</label><textarea id="pa-m" rows="3"></textarea></div>',
+        buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: 'Enviar solicitud', cls: 'gold', onClick: function (el) { var v = el.querySelector('#pa-m').value.trim(); if (v.length < 5) { UI.toast('Indique el motivo', 'bad'); return false; } return v; } }] });
+      if (!mot) return;
+      if (await UI.intentar(function () { return UI.api('solicitarApertura', { rut: f.rut, motivo: mot }); }, 'Enviando…')) UI.success('Solicitud enviada', 'El Equipo de Gestión revisará su solicitud y le avisará por correo.');
+      return;
+    }
     if (a === 'cerrar-edicion') {
       if (!await UI.confirm('¿Cerrar la edición?', 'La familia y los funcionarios ya no podrán modificar la ficha. Los datos se conservan.', 'Cerrar edición')) return;
       var rc = await UI.intentar(function () { return UI.api('cerrarEdicion', { alcance: 'ficha', valor: f.rut }); }, 'Cerrando…');
@@ -2839,15 +3468,16 @@ var Staff = (function () {
     }
     function fila(c, cls, nombre) {
       return '<tr class="' + (cls || '') + '"><td>' + esc(nombre || c.curso) + '</td><td><b>' + (c.total - c.retirado) + '</b></td><td>' + c.pendiente + '</td><td>' + c.en_proceso + '</td><td>' + (c.enviada + c.desbloqueada) + '</td><td>' + c.matriculada +
-        '</td><td>' + c.retirado + '</td><td class="hide-sm">' + c.mujeres + '</td><td class="hide-sm">' + c.hombres + '</td><td><div class="row" style="flex-wrap:nowrap;gap:8px">' + barra(c) + '<span class="small">' + pct(c) + '%</span></div></td></tr>';
+        '</td><td>' + c.retirado + '</td><td class="hide-sm">' + c.mujeres + '</td><td class="hide-sm">' + c.hombres + '</td><td>' + (c.pueblos || 0) + '</td><td><div class="row" style="flex-wrap:nowrap;gap:8px">' + barra(c) + '<span class="small">' + pct(c) + '%</span></div></td></tr>';
     }
-    var head = '<thead><tr><th>Curso</th><th>Estudiantes</th><th>Sin iniciar</th><th>En proceso</th><th>Enviadas</th><th>Matriculados</th><th>Retirados</th><th class="hide-sm">Mujeres</th><th class="hide-sm">Hombres</th><th>Avance</th></tr></thead>';
+    var head = '<thead><tr><th>Curso</th><th>Estudiantes</th><th>Sin iniciar</th><th>En proceso</th><th>Enviadas</th><th>Matriculados</th><th>Retirados</th><th class="hide-sm">Mujeres</th><th class="hide-sm">Hombres</th><th title="Mapuche, Aymara, Quechua y Rapa Nui">Pueblos orig.</th><th>Avance</th></tr></thead>';
     var resumen = st.ciclos.map(function (ci) { var cs = st.cursos.filter(function (c) { return c.ciclo === ci; }); return cs.length ? fila(sumar(cs), '', ci) : ''; }).join('');
     var h = '<div class="page-h"><h2>Resumen estadístico de matrícula ' + esc(S.form.config.anio) + '</h2><span class="grow"></span><button class="btn ghost" id="st-xls">⬇ Exportar resumen</button></div>' +
       '<div class="kpis"><div class="kpi k1"><span class="i">🎒</span><div class="v">' + (T.total - T.retirado) + '</div><div class="l">Estudiantes vigentes</div></div>' +
       '<div class="kpi k2"><span class="i">✅</span><div class="v">' + T.matriculada + '</div><div class="l">Matriculados (' + pct(T) + '%)</div></div>' +
       '<div class="kpi k3"><span class="i">📨</span><div class="v">' + (T.enviada + T.desbloqueada) + '</div><div class="l">Fichas enviadas por familias</div></div>' +
       '<div class="kpi k4"><span class="i">⏳</span><div class="v">' + (T.pendiente + T.en_proceso) + '</div><div class="l">Pendientes / en proceso</div></div></div>' +
+      tarjetaPueblos(st, T) + tarjetasInclusion(st) +
       '<div class="legend" style="margin-bottom:14px"><span><i style="background:var(--ok)"></i>Matriculados</span><span><i style="background:var(--blue-2)"></i>Enviadas por familia</span><span><i style="background:#f0b429"></i>En proceso</span><span><i style="background:#e9eef7"></i>Sin iniciar</span></div>' +
       '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Resumen por ciclo</h3></div><div class="table-wrap"><table class="t">' + head.replace('Curso', 'Ciclo') + '<tbody>' + resumen + fila(T, 'total', 'TOTAL ESTABLECIMIENTO') + '</tbody></table></div></section>';
     st.ciclos.forEach(function (ci) {
@@ -2859,21 +3489,149 @@ var Staff = (function () {
         return n.cursos.map(function (c) { return fila(c); }).join('') + (n.cursos.length > 1 ? fila(sumar(n.cursos), 'subtotal', 'Subtotal ' + n.nivel) : '');
       }).join('');
       h += '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><span class="tag" style="background:' + COLOR_CICLO[ci] + ';padding:4px 12px;border-radius:999px;color:#fff;font-weight:800">' + esc(ci) + '</span>' +
-        '<span class="muted small">' + cs.length + ' cursos · ' + niveles.length + ' niveles</span></div><div class="table-wrap"><table class="t">' + head + '<tbody>' + cuerpo + fila(sumar(cs), 'total', 'Total ' + ci) + '</tbody></table></div></section>';
+        '<span class="muted small">' + niveles.length + ' niveles ' + esc(S.form.config.anio) + '</span></div><div class="table-wrap"><table class="t">' + head + '<tbody>' + cuerpo + fila(sumar(cs), 'total', 'Total ' + ci) + '</tbody></table></div></section>';
     });
     main().innerHTML = h;
     UI.$('#st-xls').onclick = function () {
-      var rows = [['Ciclo', 'Nivel', 'Curso', 'Estudiantes vigentes', 'Sin iniciar', 'En proceso', 'Enviadas', 'Matriculados', 'Retirados', 'Mujeres', 'Hombres', '% avance']];
-      st.cursos.forEach(function (c) { rows.push([c.ciclo, c.nivel, c.curso, c.total - c.retirado, c.pendiente, c.en_proceso, c.enviada + c.desbloqueada, c.matriculada, c.retirado, c.mujeres, c.hombres, pct(c)]); });
-      rows.push(['TOTAL', '', '', T.total - T.retirado, T.pendiente, T.en_proceso, T.enviada + T.desbloqueada, T.matriculada, T.retirado, T.mujeres, T.hombres, pct(T)]);
+      var rows = [['Ciclo', 'Nivel', 'Curso', 'Estudiantes vigentes', 'Sin iniciar', 'En proceso', 'Enviadas', 'Matriculados', 'Retirados', 'Mujeres', 'Hombres', 'Pueblos originarios (4 con vitalidad lingüística)', '% avance']];
+      st.cursos.forEach(function (c) { rows.push([c.ciclo, c.nivel, c.curso, c.total - c.retirado, c.pendiente, c.en_proceso, c.enviada + c.desbloqueada, c.matriculada, c.retirado, c.mujeres, c.hombres, c.pueblos || 0, pct(c)]); });
+      rows.push(['TOTAL', '', '', T.total - T.retirado, T.pendiente, T.en_proceso, T.enviada + T.desbloqueada, T.matriculada, T.retirado, T.mujeres, T.hombres, T.pueblos || 0, pct(T)]);
       var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Resumen');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Ciclo', 'Vigentes', 'Nuevos', 'PIE', 'PIE en evaluación', 'Con NEE', 'Pueblos originarios', 'Extranjeros']].concat((st.porCiclo || []).map(function (c) { return [c.ciclo, c.vigentes, c.nuevos, c.pie, c.pieEval, c.nee, c.pueblos, c.extranjeros]; }))), 'Por ciclo');
+      var dg = [['Ciclo', 'Diagnóstico', 'Estudiantes']]; (st.porCiclo || []).forEach(function (c) { Object.keys(c.diagnosticos || {}).forEach(function (d) { dg.push([c.ciclo, d, c.diagnosticos[d]]); }); });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dg), 'Diagnósticos');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Comuna', 'Estudiantes']].concat((st.comunas || []).map(function (x) { return [x.nombre, x.n]; }))), 'Comunas');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Establecimiento de procedencia', 'Estudiantes']].concat((st.procedencias || []).map(function (x) { return [x.nombre, x.n]; }))), 'Procedencia');
       XLSX.writeFile(wb, 'Resumen_Matricula_' + S.form.config.anio + '.xlsx');
     };
   }
+  /* Pueblos originarios con vitalidad lingüística (Mapuche, Aymara, Quechua y Rapa Nui) · meta institucional 20 %. */
+  function tarjetaPueblos(st, T) {
+    var vig = T.total - T.retirado, n = T.pueblos || 0, p = vig ? Math.round(n * 1000 / vig) / 10 : 0, meta = st.metaPueblos || 20, ok = p >= meta;
+    var nombres = { mapuche: 'Mapuche', aymara: 'Aymara', quechua: 'Quechua', 'rapa nui': 'Rapa Nui' };
+    return '<section class="card" style="margin-bottom:20px"><div class="pueblos-card"><div class="meta-ring" style="--p:' + Math.min(100, p * 100 / meta) + ';--c:' + (ok ? 'var(--ok)' : 'var(--gold)') + '"><span>' + p + '%<small>meta ' + meta + '%</small></span></div>' +
+      '<div class="grow"><div class="eyebrow" style="color:#8a6a1f">Pueblos originarios con vitalidad lingüística</div><h3 style="margin:4px 0 6px">' + n + ' de ' + vig + ' estudiantes declaran pertenecer a los pueblos Mapuche, Aymara, Quechua o Rapa Nui</h3>' +
+      '<div class="row small">' + Object.keys(nombres).map(function (k) { return '<span class="badge b-blue">' + nombres[k] + ': ' + ((st.pueblos || {})[k] || 0) + '</span>'; }).join('') +
+      '<span class="badge ' + (ok ? 'b-matriculada' : 'b-gold') + '">' + (ok ? '✓ Meta del 20% alcanzada' : 'Faltan ' + Math.max(0, Math.ceil(vig * meta / 100) - n) + ' estudiantes para el 20%') + '</span></div>' +
+      '<p class="small muted" style="margin:8px 0 0">Según lo declarado por las familias en la ficha de matrícula (dato «pueblo originario»). Base: estudiantes vigentes.</p></div></div></section>';
+  }
+  /* Resumen por ciclo: estudiantes nuevos, PIE, NEE por diagnóstico, pueblos originarios; distribución por comuna y procedencia. */
+  function tarjetasInclusion(st) {
+    var pc = st.porCiclo || [];
+    if (!pc.length) return '';
+    var T = { vigentes: 0, nuevos: 0, pie: 0, pieEval: 0, nee: 0, pueblos: 0, extranjeros: 0 };
+    pc.forEach(function (c) { for (var k in T) T[k] += c[k] || 0; });
+    function filaC(c, cls, n) { return '<tr class="' + (cls || '') + '"><td>' + esc(n || c.ciclo) + '</td><td><b>' + c.vigentes + '</b></td><td>' + c.nuevos + '</td><td>' + c.pie + '</td><td>' + c.pieEval + '</td><td>' + c.nee + '</td><td>' + c.pueblos + '</td><td>' + c.extranjeros + '</td></tr>'; }
+    var diags = {};
+    pc.forEach(function (c) { Object.keys(c.diagnosticos || {}).forEach(function (d) { diags[d] = 1; }); });
+    var dl = Object.keys(diags).sort();
+    function ranking(lista, titulo, icono) {
+      if (!lista || !lista.length) return '';
+      var max = lista[0].n || 1;
+      return '<section class="card" style="margin-bottom:20px"><div class="card-h"><div class="sec-num">' + icono + '</div><h3>' + titulo + '</h3><span class="badge b-blue">' + lista.length + '</span></div><div class="rank">' +
+        lista.slice(0, 25).map(function (x) { return '<div>' + esc(x.nombre) + '</div><div class="bar"><i class="e" style="width:' + (x.n * 100 / max) + '%"></i></div><b>' + x.n + '</b>'; }).join('') +
+        '</div>' + (lista.length > 25 ? '<p class="small muted">Se muestran los 25 principales. El detalle completo está en «Exportar resumen».</p>' : '') + '</section>';
+    }
+    return '<div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi k1"><span class="i">🆕</span><div class="v">' + T.nuevos + '</div><div class="l">Estudiantes nuevos (sin curso de procedencia)</div></div>' +
+      '<div class="kpi k2"><span class="i">🧩</span><div class="v">' + T.pie + '</div><div class="l">Estudiantes PIE' + (T.pieEval ? ' · ' + T.pieEval + ' en evaluación' : '') + '</div></div>' +
+      '<div class="kpi k4"><span class="i">🌎</span><div class="v">' + T.extranjeros + '</div><div class="l">Estudiantes extranjeros</div></div></div>' +
+      '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Inclusión y diversidad por ciclo</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>Ciclo</th><th>Vigentes</th><th>Nuevos</th><th>PIE</th><th>PIE en evaluación</th><th>Con NEE</th><th>Pueblos orig.</th><th>Extranjeros</th></tr></thead><tbody>' +
+      pc.map(function (c) { return filaC(c); }).join('') + filaC(T, 'total', 'TOTAL') + '</tbody></table></div></section>' +
+      (dl.length ? '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Estudiantes con NEE según diagnóstico</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>Diagnóstico</th>' +
+        pc.map(function (c) { return '<th>' + esc(c.ciclo) + '</th>'; }).join('') + '<th>Total</th></tr></thead><tbody>' +
+        dl.map(function (d) { var tot = 0; return '<tr><td>' + esc(d) + '</td>' + pc.map(function (c) { var n = (c.diagnosticos || {})[d] || 0; tot += n; return '<td>' + n + '</td>'; }).join('') + '<td><b>' + tot + '</b></td></tr>'; }).join('') +
+        '</tbody></table></div></section>' : '') +
+      '<div class="grid" style="align-items:start">' + ranking(st.comunas, 'Estudiantes por comuna', '📍') + ranking(st.procedencias, 'Por establecimiento de procedencia', '🏫') + '</div>';
+  }
   function sumar(lista) {
-    var t = { total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0 };
+    var t = { total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0, pueblos: 0 };
     lista.forEach(function (c) { for (var k in t) t[k] += c[k] || 0; });
     return t;
+  }
+
+  /* ============================== SOLICITUDES ============================== */
+  async function contarSolicitudes() {
+    if (!gestion()) return;
+    try {
+      var r = await UI.api('listarSolicitudes');
+      var n = r.solicitudes.filter(function (s) { return s.estado === 'pendiente' && (s.tipo !== 'borrado' || r.superadmin); }).length;
+      var b = UI.$('.nav-item[data-nav="solicitudes"]');
+      if (b) { var old = b.querySelector('.cnt'); if (old) old.remove(); if (n) b.insertAdjacentHTML('beforeend', '<span class="cnt">' + n + '</span>'); }
+    } catch (e) { /* no crítico */ }
+  }
+  async function vSolicitudes() {
+    var r = await UI.api('listarSolicitudes'), lista = r.solicitudes;
+    var TIP = { apertura: ['✏️', 'Corrección solicitada por la familia'], apertura_funcionario: ['🧑‍🏫', 'Apertura solicitada por funcionario/a'], borrado: ['🗑', 'Borrado masivo de fichas'] };
+    var pend = lista.filter(function (s) { return s.estado === 'pendiente'; }), hist = lista.filter(function (s) { return s.estado !== 'pendiente'; });
+    function tarjeta(s) {
+      var t = TIP[s.tipo] || ['📨', s.tipo], puede = s.estado === 'pendiente' && (s.tipo !== 'borrado' || r.superadmin);
+      return '<section class="card solicitud' + (s.tipo === 'borrado' ? ' borrado' : '') + '"><div class="s-ico">' + t[0] + '</div><div class="grow">' +
+        '<div class="row small" style="gap:6px"><span class="badge ' + (s.tipo === 'borrado' ? 'b-red' : 'b-blue') + '">' + esc(t[1]) + '</span>' +
+        '<span class="badge ' + (s.estado === 'pendiente' ? 'b-gold' : s.estado === 'aprobada' ? 'b-matriculada' : 'b-gray') + '">' + esc(s.estado) + '</span><span class="muted">' + esc(s.fecha) + '</span></div>' +
+        '<h3 style="font-size:16px;margin:8px 0 2px">' + esc(s.estudiante || '') + (s.rut ? ' <span class="muted small">· RUT ' + esc(s.rut) + '</span>' : '') + '</h3>' +
+        '<div class="small muted">Solicita: <b>' + esc(s.solicitante) + '</b>' + (s.solicitanteEmail ? ' · ' + esc(s.solicitanteEmail) : '') + '</div>' +
+        '<p style="margin:8px 0 0;background:var(--sky-2);padding:10px 12px;border-radius:10px">“' + esc(s.motivo) + '”</p>' +
+        (s.estado !== 'pendiente' ? '<div class="small muted" style="margin-top:8px">Resuelta por ' + esc(s.resolvio) + ' el ' + esc(s.fechaResolucion) + (s.comentario ? ' · «' + esc(s.comentario) + '»' : '') +
+          (s.codigo ? ' · Código: <b>' + esc(s.codigo) + '</b>' + (s.codigoUsado ? ' (usado)' : ' (vence ' + esc(s.codigoVence) + ')') : '') + '</div>' : '') +
+        (s.tipo === 'borrado' && s.estado === 'pendiente' && !r.superadmin ? '<div class="small" style="margin-top:8px;color:#8a5d00">Solo el administrador principal puede autorizar el borrado masivo.</div>' : '') +
+        '</div>' + (puede ? '<div class="stack" style="gap:8px"><button class="btn ok sm" data-s="si" data-id="' + esc(s.id) + '">✓ Autorizar</button><button class="btn ghost sm" data-s="no" data-id="' + esc(s.id) + '">✕ Rechazar</button></div>' : '') + '</section>';
+    }
+    main().innerHTML = '<div class="page-h"><div><div class="eyebrow">Equipo de Gestión</div><h2>Solicitudes</h2></div><span class="badge b-gold">' + pend.length + ' pendientes</span></div>' +
+      '<div class="card" style="padding:12px 16px;margin-bottom:16px;background:var(--sky)"><span class="small">ℹ️ Al <b>autorizar una corrección</b>, la ficha se abre para la familia y le llega un correo avisándole que puede corregirla. Al terminar, la familia envía los datos y la ficha se cierra sola. Al <b>autorizar un borrado masivo</b> se genera un código que llega al correo de quien lo solicitó.</span></div>' +
+      (pend.length ? pend.map(tarjeta).join('') : '<div class="card empty"><div class="e-ico">✅</div><p>No hay solicitudes pendientes.</p></div>') +
+      (hist.length ? '<h3 style="margin:26px 0 12px">Historial</h3>' + hist.slice(0, 40).map(tarjeta).join('') : '');
+    main().onclick = async function (e) {
+      var b = e.target.closest('[data-s]'); if (!b) return;
+      var s = lista.filter(function (x) { return x.id === b.dataset.id; })[0], aprobar = b.dataset.s === 'si';
+      var com = await UI.modal({
+        title: aprobar ? '✓ Autorizar solicitud' : '✕ Rechazar solicitud',
+        html: '<p class="muted" style="margin-top:0">' + (aprobar ? (s.tipo === 'borrado' ? 'Se generará un <b>código de autorización</b> (válido 24 horas, un solo uso) y se enviará a ' + esc(s.solicitanteEmail) + '.' : 'Se abrirá la ficha de <b>' + esc(s.estudiante) + '</b> para corregir y se avisará por correo.') : 'Se avisará por correo que la solicitud no fue autorizada.') + '</p>' +
+          '<div class="field"><label>Comentario (opcional, se incluye en el correo)</label><textarea id="sc" rows="2"></textarea></div>',
+        buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: aprobar ? 'Autorizar' : 'Rechazar', cls: aprobar ? 'ok' : 'bad', onClick: function (el) { return { c: el.querySelector('#sc').value }; } }]
+      });
+      if (!com) return;
+      var res = await UI.intentar(function () { return UI.api('resolverSolicitud', { id: s.id, aprobar: aprobar, comentario: com.c }); }, 'Guardando…');
+      if (!res) return;
+      await UI.success(aprobar ? 'Solicitud autorizada' : 'Solicitud rechazada',
+        (res.codigo ? 'Código de autorización: <b style="font-size:22px;letter-spacing:3px">' + esc(res.codigo) + '</b><br>' : '') + (res.correoEnviado ? '📧 Se envió un correo con el aviso.' : 'No se pudo enviar el correo (revise que exista un correo registrado).'));
+      contarSolicitudes(); vSolicitudes();
+    };
+  }
+  async function borrarTodo() {
+    var esSuper = !!P.superadmin, total = fichas.length;
+    if (!esSuper) {
+      var op = await UI.modal({
+        center: true, icon: 'warning', title: 'Eliminar todas las fichas',
+        html: '<p class="muted">Esta acción borra <b>las ' + total + ' fichas</b> de estudiantes. Solo puede hacerse con un <b>código de autorización</b> del administrador principal.</p>',
+        buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: '📨 Solicitar autorización', cls: 'gold', value: 'pedir' }, { text: '🔑 Ya tengo un código', cls: 'bad', value: 'codigo' }]
+      });
+      if (!op) return;
+      if (op === 'pedir') {
+        var mot = await UI.modal({ title: '📨 Solicitar borrado masivo', html: '<div class="field"><label>Motivo</label><textarea id="bm" rows="3" placeholder="Ej.: cargar nuevamente la base del año 2027 desde cero"></textarea></div>',
+          buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: 'Enviar solicitud', cls: 'gold', onClick: function (el) { var v = el.querySelector('#bm').value.trim(); if (v.length < 5) { UI.toast('Indique el motivo', 'bad'); return false; } return v; } }] });
+        if (!mot) return;
+        if (await UI.intentar(function () { return UI.api('solicitarBorrado', { motivo: mot }); }, 'Enviando…')) UI.success('Solicitud enviada', 'El administrador principal recibirá su solicitud. Si la autoriza, le llegará un código a su correo.');
+        return;
+      }
+    }
+    var datos = await UI.modal({
+      title: '🗑 Eliminar todas las fichas', size: 'wide',
+      html: '<div class="hint" style="background:var(--bad-bg);border-left:4px solid var(--bad);padding:12px 14px;border-radius:8px;color:#8a1f1f">Se eliminarán <b>las ' + total + ' fichas</b> con todos sus datos. Esta acción <b>no se puede deshacer</b>. Antes de borrar se descargará automáticamente una <b>copia de respaldo en Excel</b>.</div>' +
+        (esSuper ? '' : '<div class="field" style="margin-top:14px"><label>Código de autorización (recibido por correo)</label><input id="bt-cod" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:20px"></div>') +
+        '<div class="field" style="margin-top:14px"><label>Para confirmar, escriba: <b>ELIMINAR TODO</b></label><input id="bt-conf" autocomplete="off"></div>',
+      buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: '🗑 Eliminar definitivamente', cls: 'bad', onClick: function (el) {
+        var conf = el.querySelector('#bt-conf').value.trim().toUpperCase();
+        if (conf !== 'ELIMINAR TODO') { UI.toast('Escriba exactamente: ELIMINAR TODO', 'bad'); return false; }
+        return { confirmacion: conf, codigo: esSuper ? '' : el.querySelector('#bt-cod').value.trim() };
+      } }]
+    });
+    if (!datos) return;
+    if (fichas.length) exportarExcel(fichas, 'una', null, 'RESPALDO_antes_de_borrar_' + new Date().toISOString().slice(0, 10));
+    var r = await UI.intentar(function () { return UI.api('eliminarTodasLasFichas', datos); }, 'Eliminando…');
+    if (!r) return;
+    fichas = [];
+    await UI.success('Fichas eliminadas', 'Se eliminaron <b>' + r.eliminadas + '</b> fichas. Se descargó una copia de respaldo. Ya puede cargar la nueva base con «📥 Cargar / actualizar base».');
+    ir('fichas');
   }
 
   /* ================================ USUARIOS ================================ */
@@ -3097,6 +3855,8 @@ var Staff = (function () {
         '<div class="field"><label>Tipo de respuesta</label><select id="c-tipo"' + (UI.si(c.sistema) ? ' disabled' : '') + '>' + Object.keys(TIPOS).map(function (t) { return '<option value="' + t + '"' + (t === c.tipo ? ' selected' : '') + '>' + TIPOS[t] + '</option>'; }).join('') + '</select></div>' +
         '<div class="field full" id="c-opw"><label>Opciones de la lista (separadas por coma)</label><input id="c-op" value="' + esc(c.opciones) + '" placeholder="Opción 1, Opción 2, Opción 3"></div>' +
         '<div class="field"><label>Texto de ayuda</label><input id="c-ay" value="' + esc(c.ayuda) + '"></div>' +
+        '<div class="field full"><label>Mostrar solo si… (opcional)</label><input id="c-cond" value="' + esc(c.condicion || '') + '" placeholder="Ej.: est_nacionalidad!=Chilena · mad_situacion=Registrar datos de la madre · sup_nombre">' +
+        '<small class="help">Use el código del dato (columna de la planilla). «dato=valor» muestra si coincide, «dato!=valor» si es distinto y solo «dato» si tiene algo escrito. Un dato oculto no se exige.</small></div>' +
         '<div class="field"><label>Orden</label><input id="c-or" type="number" value="' + esc(c.orden) + '"><small class="help">Número menor aparece primero</small></div>' +
         '<div class="field full row" style="gap:22px"><label class="check"><input type="checkbox" id="c-ob"' + (UI.si(c.obligatorio) ? ' checked' : '') + '> Obligatorio</label>' +
         '<label class="check"><input type="checkbox" id="c-fa"' + (UI.si(c.editableFamilia) ? ' checked' : '') + '> La familia puede completarlo/modificarlo</label>' +
@@ -3104,7 +3864,7 @@ var Staff = (function () {
       buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, {
         text: 'Guardar', cls: 'ok', onClick: async function (el) {
           var q = function (s) { return el.querySelector(s); };
-          var d = { id: c.id, etiqueta: q('#c-et').value, seccion: q('#c-sec').value, tipo: q('#c-tipo').value, opciones: q('#c-op').value, ayuda: q('#c-ay').value, orden: q('#c-or').value,
+          var d = { id: c.id, etiqueta: q('#c-et').value, seccion: q('#c-sec').value, tipo: q('#c-tipo').value, opciones: q('#c-op').value, ayuda: q('#c-ay').value, condicion: q('#c-cond').value, orden: q('#c-or').value,
             obligatorio: q('#c-ob').checked, editableFamilia: q('#c-fa').checked, activo: q('#c-ac').checked };
           try { return await UI.api('guardarCampo', { campo: d }); } catch (e) { UI.toast(e.userMsg || e.message, 'bad'); return false; }
         }
@@ -3198,6 +3958,15 @@ var Staff = (function () {
       inp('nombreColegio', 'Nombre del establecimiento') + inp('anio', 'Año escolar de la matrícula', '2027') + inp('rbd', 'RBD') + inp('ciudad', 'Ciudad') +
       inp('direccion', 'Dirección') + inp('telefono', 'Teléfono') + inp('email', 'Correo de contacto') + inp('directorNombre', 'Nombre del Director/a (firma)') +
       inp('urlPlataforma', 'Dirección (URL) de esta plataforma', 'https://usuario.github.io/fichas-matricula/', 'Se incluye en los correos enviados a funcionarios') + '</div></section>' +
+      '<section class="card"><div class="card-h"><div class="sec-num">📅</div><h3>Fechas del proceso de matrícula</h3></div>' +
+      '<p class="muted small" style="margin-top:-6px">Las familias solo pueden completar y enviar la ficha entre la apertura y el cierre. Para estudiantes nuevos fuera de plazo, asigne un <b>plazo especial</b> en su ficha.</p><div class="grid">' +
+      '<div class="field"><label>Apertura del proceso</label><input type="datetime-local" data-cf="fechaApertura" value="' + esc(String(c.fechaApertura || '').replace(' ', 'T')) + '"></div>' +
+      '<div class="field"><label>Cierre del proceso</label><input type="datetime-local" data-cf="fechaCierre" value="' + esc(String(c.fechaCierre || '').replace(' ', 'T')) + '"></div></div>' +
+      '<h4 style="margin:20px 0 8px">Días y horarios de matrícula por ciclo <span class="small muted">(se muestran arriba a familias y funcionarios)</span></h4><div id="cal-ed"></div>' +
+      '<button class="btn sm ghost" id="cal-add" style="margin-top:8px">➕ Agregar día</button></section>' +
+      '<section class="card"><div class="card-h"><div class="sec-num">#</div><h3>Numeración de matrícula por ciclo</h3></div>' +
+      '<p class="muted small" style="margin-top:-6px">Cada ciclo usa su propio tramo de números y nunca se repiten. Ej.: Preescolar desde 1, Primer Ciclo desde 101, Segundo Ciclo desde 401, Media desde 701.</p><div class="grid">' +
+      inp('numInicioPreescolar', 'Preescolar comienza en', '1') + inp('numInicioPrimerCiclo', 'Primer Ciclo comienza en', '101') + inp('numInicioSegundoCiclo', 'Segundo Ciclo comienza en', '401') + inp('numInicioMedia', 'Enseñanza Media comienza en', '701') + '</div></section>' +
       '<section class="card"><div class="card-h"><div class="sec-num">🎬</div><h3>Video tutorial</h3></div><div class="grid">' +
       inp('videoUrl', 'Enlace del video (YouTube o Google Drive)', 'https://www.youtube.com/watch?v=…', 'Se abre automáticamente la primera vez que cada persona ingresa; después queda disponible en el botón «Tutorial».') +
       '<div class="field" style="align-self:end"><button class="btn ghost" id="cf-ver">▶ Probar video</button></div></div></section>' +
@@ -3208,9 +3977,24 @@ var Staff = (function () {
       '<small class="help">El ciclo se calcula automáticamente: Prekínder/Kínder → Preescolar · 1° a 4° Básico → Primer Ciclo · 5° a 8° Básico → Segundo Ciclo · 1° a 4° Medio → Enseñanza Media.</small></section>' +
       '<div class="actionbar"><span class="grow"></span><button class="btn ok lg" id="cf-save">💾 Guardar configuración</button></div>';
     UI.$('#cf-ver').onclick = function () { S.form.config.videoUrl = UI.$('#cf-videoUrl').value; App.tutorial(); };
+    var cal = []; try { cal = JSON.parse(c.calendario || '[]') || []; } catch (e) { cal = []; }
+    var CIC = ['Todos los ciclos', 'Preescolar', 'Primer Ciclo', 'Segundo Ciclo', 'Enseñanza Media'];
+    function pintarCal() {
+      UI.$('#cal-ed').innerHTML = cal.length ? cal.map(function (it, i) {
+        return '<div class="grid-3" style="grid-template-columns:1.2fr 1fr .7fr .7fr 1.4fr auto;gap:8px;margin-bottom:8px;align-items:center" data-ci="' + i + '">' +
+          '<select data-k="ciclo">' + CIC.map(function (x) { return '<option' + (x === it.ciclo ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>' +
+          '<input type="date" data-k="fecha" value="' + esc(it.fecha || '') + '"><input type="time" data-k="desde" value="' + esc(it.desde || '') + '"><input type="time" data-k="hasta" value="' + esc(it.hasta || '') + '">' +
+          '<input data-k="lugar" placeholder="Lugar (opcional)" value="' + esc(it.lugar || '') + '"><button class="icon-btn" data-cdel="' + i + '" title="Quitar">🗑</button></div>';
+      }).join('') : '<p class="small muted">Aún no hay días cargados.</p>';
+    }
+    pintarCal();
+    UI.$('#cal-ed').oninput = UI.$('#cal-ed').onchange = function (e) { var r0 = e.target.closest('[data-ci]'); if (r0 && e.target.dataset.k) cal[+r0.dataset.ci][e.target.dataset.k] = e.target.value; };
+    UI.$('#cal-ed').onclick = function (e) { var b = e.target.closest('[data-cdel]'); if (b) { cal.splice(+b.dataset.cdel, 1); pintarCal(); } };
+    UI.$('#cal-add').onclick = function () { cal.push({ ciclo: 'Preescolar', fecha: '', desde: '08:30', hasta: '13:00', lugar: '' }); pintarCal(); };
     UI.$('#cf-save').onclick = async function () {
       var cfg = {};
-      UI.$$('[data-cf]').forEach(function (el) { cfg[el.dataset.cf] = el.value; });
+      UI.$$('[data-cf]').forEach(function (el) { cfg[el.dataset.cf] = el.dataset.cf.indexOf('fecha') === 0 ? el.value.replace('T', ' ') : el.value; });
+      cfg.calendario = JSON.stringify(cal.filter(function (x) { return x.fecha; }));
       var r = await UI.intentar(function () { return UI.api('guardarConfig', { config: cfg, cursos: UI.$('#cf-cursos').value }); }, 'Guardando…');
       if (!r) return;
       await refrescarForm();
@@ -3268,6 +4052,7 @@ var App = (function () {
       '<p class="hero-lead">' + esc(cfg.mensajeBienvenida) + '</p>' +
       '<div class="hero-cta"><button class="btn dark lg" id="lg-ir">Completar la ficha →</button><button class="btn soft lg" id="lg-video2">▶ Ver tutorial</button></div>' +
       '<div class="hero-steps">' + pasos.map(function (p) { return '<div class="hero-step"><div class="ic">' + p[0] + '</div><b>' + p[1] + '</b><span>' + p[2] + '</span></div>'; }).join('') + '</div>' +
+      UI.calendarioHtml(cfg, '') +
       '</section><section class="login-side" id="lg-side"><div class="login-box">' +
       (S.publico.error ? '<div class="demo-banner" style="background:var(--bad-bg);border-color:#f3c4c4;color:var(--bad)">⚠️ ' + esc(S.publico.error) + '</div>' : '') +
       (S.demo ? '<div class="demo-banner">🧪 <b>Modo demostración</b> (los datos quedan solo en este navegador).<br>Familia: RUT <code data-fill="f">' + esc(demo && demo.rut) + '</code> clave <code data-fill="f">' + esc(demo && demo.clave) + '</code><br>' +
@@ -3278,7 +4063,7 @@ var App = (function () {
       '<form id="ff" class="stack" autocomplete="off"><div class="field"><label for="ff-rut">RUT del estudiante</label><input id="ff-rut" inputmode="text" placeholder="12345678-9" required></div>' +
       '<div class="field"><label for="ff-cl">Clave</label><input id="ff-cl" type="password" placeholder="DDMMAAAA" required></div>' +
       '<div class="hint">🔑 La clave inicial es la <b>fecha de nacimiento del estudiante</b> en formato <b>DDMMAAAA</b> (ej.: 15 de marzo de 2019 → <b>15032019</b>). Si la cambió, use su clave nueva.</div>' +
-      '<button class="btn dark lg" type="submit">Ingresar</button><p class="small muted" style="margin:0;text-align:center">¿Olvidó su clave? Comuníquese con el establecimiento para restablecerla.</p></form></div>' +
+      '<button class="btn dark lg" type="submit">Ingresar</button><a href="#" id="ff-olv" class="small" style="text-align:center">¿Olvidó su clave? Reciba una clave temporal en su correo</a></form></div>' +
       '<div class="hidden" id="lg-staff">' +
       '<form id="fs" class="stack"><div class="field"><label for="fs-us">Usuario (correo institucional)</label><input id="fs-us" type="email" inputmode="email" placeholder="nombre@colegio.cl" required autocomplete="username"></div>' +
       '<div class="field"><label for="fs-cl">Clave</label><input id="fs-cl" type="password" placeholder="Clave recibida por correo o su clave personal" required autocomplete="current-password"></div>' +
@@ -3306,6 +4091,7 @@ var App = (function () {
       if (r) { guardarToken(r.token); S.perfil = r.perfil; entrar(); }
     };
     UI.$('#fs-olv').onclick = function (e) { e.preventDefault(); recuperar(); };
+    UI.$('#ff-olv').onclick = function (e) { e.preventDefault(); recuperarFamilia(); };
     if (S.demo) {
       UI.$('.demo-banner').onclick = function (e) {
         var c = e.target.closest('[data-fill]');
@@ -3317,6 +4103,21 @@ var App = (function () {
       };
       UI.$('#demo-reset').onclick = function (e) { e.preventDefault(); S.demo.reiniciar(); location.reload(); };
     }
+  }
+
+  function recuperarFamilia() {
+    UI.modal({
+      title: '🔑 Recuperar clave · Familias',
+      html: '<p class="muted" style="margin-top:0">Escriba el <b>RUT del estudiante</b>. Enviaremos una <b>clave temporal</b> al correo del apoderado/a registrado en la ficha; al ingresar, el sistema le pedirá crear una nueva.</p>' +
+        '<div class="field"><label>RUT del estudiante</label><input id="rf-rut" placeholder="12345678-9" value="' + esc((UI.$('#ff-rut') || {}).value || '') + '"></div>' +
+        '<p class="small muted">Si el correo registrado ya no existe, comuníquese con el establecimiento para actualizarlo.</p>',
+      buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, {
+        text: '📧 Enviar clave temporal', onClick: async function (el) {
+          try { return await UI.api('recuperarClaveFamilia', { rut: el.querySelector('#rf-rut').value }); }
+          catch (e) { UI.toast(e.userMsg || e.message, 'bad'); return false; }
+        }
+      }]
+    }).then(function (r) { if (r) UI.success('Solicitud recibida', esc(r.mensaje)); });
   }
 
   function recuperar() {
