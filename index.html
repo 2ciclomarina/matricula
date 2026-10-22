@@ -526,6 +526,44 @@ tr.total td { background: var(--navy); color: #fff; font-weight: 800; }
 @media (max-width: 640px) { .pueblo-row { grid-template-columns: 100px minmax(0, 1fr) 70px; } .car-slide figcaption b { font-size: 19px; } }
 .login-box .card { position: relative; }
 
+/* carga suave de fotos */
+.car-slide { background: linear-gradient(110deg, #0e2a63 8%, #1a3f86 18%, #0e2a63 33%); background-size: 200% 100%; animation: brillo 1.4s linear infinite; }
+.car-slide img { opacity: 0; transition: opacity .6s ease, transform 6s ease; }
+.car-slide img.listo { opacity: 1; }
+.car-slide:has(img.listo) { animation: none; }
+@keyframes brillo { to { background-position: -200% 0; } }
+
+/* ===== celular: todo ordenado y fácil de tocar ===== */
+.mas-btn { display: none; }
+@media (max-width: 640px) {
+  .topbar { gap: 8px; padding: 8px 12px; }
+  .topbar img { width: 36px; height: 36px; }
+  .topbar .t1 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42vw; }
+  .topbar .t2 { display: none; }
+  .user-chip { gap: 6px; }
+  .user-chip .avatar { display: none; }
+  .topbar .btn.sm { padding: 7px 9px; }
+  .acciones .sec { display: none !important; }
+  .mas-btn { display: inline-flex; }
+  .actionbar { flex-wrap: nowrap; gap: 8px; padding: 10px 12px; margin: 20px -16px -80px; }
+  .actionbar .autosave { display: none; }
+  .actionbar .grow { display: none; }
+  .actionbar .btn { flex: 1; padding: 13px 10px; font-size: 15px; }
+  .actionbar .mas-btn { flex: 0 0 auto; }
+  .page-h.acciones { gap: 8px; }
+  .page-h.acciones > .btn { flex: 1; }
+  .savebar { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px 14px; }
+  .savebar .grow { display: none; }
+  .savebar .btn, .savebar .badge { width: 100%; justify-content: center; }
+  .savebar .autosave { justify-content: center; font-size: 12.5px; }
+  .wrap { padding-bottom: 150px; }
+}
+.hoja-acciones { display: grid; gap: 10px; }
+.hoja-acciones .btn { width: 100%; justify-content: flex-start; padding: 15px 18px; font-size: 16px; }
+.aviso-formal { display: flex; gap: 14px; align-items: flex-start; background: linear-gradient(120deg, #eef4ff, #f8fbff); border: 1.5px solid #b9cff3; border-radius: var(--radius); padding: 16px 18px; margin-top: 18px; }
+.aviso-formal .ico { font-size: 28px; }
+.aviso-formal b.t { color: var(--navy); }
+
 </style>
 </head>
 <body>
@@ -655,6 +693,7 @@ function createCore_(env) {
     portadaTitulo: 'Un futuro que comienza',
     portadaDestacado: 'aquí.',
     carrusel: '[]',             // fotos de la portada: [{ url, titulo, texto }]
+    avisoFormalizacion: 'Importante: enviar esta ficha no completa la matrícula. La matrícula se formaliza de manera presencial en el establecimiento, en la fecha y horario indicados para su ciclo.',
     mensajeBienvenida: 'Les damos la bienvenida al proceso de matrícula. Revise y complete la ficha con datos actualizados y lea los documentos institucionales antes de enviar.',
     textoActa: 'Quien suscribe, en calidad de apoderado/a del/la estudiante individualizado/a en la presente ficha, declara haber recibido, leído y tomado conocimiento del Proyecto Educativo Institucional (PEI), del Reglamento Interno Escolar (RIE) y del Reglamento de Evaluación, Calificación y Promoción del establecimiento. Asimismo, se compromete a respetar lo establecido en dichas normas, a apoyar activamente el proceso formativo de su pupilo/a y a respetar los lineamientos de la normativa educacional vigente.'
   };
@@ -929,9 +968,10 @@ function createCore_(env) {
 
   /* ------------------------------ correos ----------------------------- */
   // Todo envío queda en la Bitácora (enviado o con el motivo del error) para poder revisar qué pasó.
+  var ultimoErrorCorreo = '';
   function enviar(para, asunto, html, extra) {
-    try { env.mail(para, asunto, html, extra); log('Sistema', 'Correo enviado', para + ' · ' + asunto); return true; }
-    catch (e) { log('Sistema', 'ERROR al enviar correo', para + ' · ' + asunto + ' · ' + (e && e.message ? e.message : e)); return false; }
+    try { env.mail(para, asunto, html, extra); log('Sistema', 'Correo enviado', para + ' · ' + asunto); ultimoErrorCorreo = ''; return true; }
+    catch (e) { ultimoErrorCorreo = str(e && e.message ? e.message : e); log('Sistema', 'ERROR al enviar correo', para + ' · ' + asunto + ' · ' + ultimoErrorCorreo); return false; }
   }
   // Correo con diseño institucional (tablas y estilos en línea para que se vea bien en Gmail, Outlook y celulares).
   // tipo: 'bienvenida' | 'restablecida' | 'temporal'
@@ -1387,6 +1427,7 @@ function createCore_(env) {
     getCampos(true).forEach(function (c) { if (/uso interno/i.test(c.seccion)) delete o[c.id]; });
     delete o.matriculadoPorRut;
     o.ventana = estadoVentana(f);
+    o.formalizacion = formalizacionDe(f);
     o.solicitudPendiente = db.all('Solicitudes').some(function (s) { return s.tipo === 'apertura' && s.estado === 'pendiente' && rutKey(s.rut) === rutKey(f.rut); });
     return o;
   };
@@ -1801,6 +1842,17 @@ function createCore_(env) {
   };
 
   // Fotos de la portada: se guardan en la carpeta de Drive de la plataforma (compartidas para que las familias las vean).
+  // Prueba de envío desde la plataforma: muestra la cuenta que envía, la cuota disponible y el error exacto.
+  A.probarCorreo = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    var para = str(p.para).trim() || u.email;
+    if (!emailValido(para)) fail('Ingrese un correo válido para la prueba.');
+    var info = {}; try { info = env.infoCorreo ? env.infoCorreo() : {}; } catch (e) { info = { error: str(e.message) }; }
+    var ok = correoBase({ para: para, asunto: 'Correo de prueba', titulo: '✓ El envío de correos funciona',
+      intro: 'Si recibió este mensaje, la plataforma puede enviar claves de acceso, avisos y copias de las fichas de matrícula.', boton: false });
+    return { enviado: ok, error: ok ? '' : ultimoErrorCorreo, para: para, remitente: info.remitente || '', cuota: info.cuota, demo: !!info.demo };
+  };
+
   A.subirImagenPortada = function (p, ses) {
     soloGestion(staffDe(ses));
     var a = p.archivo || {};
@@ -1935,11 +1987,25 @@ function createCore_(env) {
       '<div style="font-size:14px;font-weight:bold;margin-bottom:4px">' + esc(nombreEstudiante(f)) + '</div>' + cab + html +
       '<p style="font-size:9px;color:#777;margin-top:14px">Copia generada automáticamente el ' + esc(env.now()) + '. El documento oficial con firmas se emite en el establecimiento.</p></body></html>';
   }
+  /* Fecha en que la familia debe formalizar la matrícula en el colegio (según el calendario de su ciclo). */
+  function formalizacionDe(f) {
+    var cfg = getConfig(), cal = parseJSON(cfg.calendario, []) || [], ciclo = cicloDe(f.curso), hoy = env.now().slice(0, 10);
+    var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    var mios = cal.filter(function (x) { return x && x.fecha && (x.ciclo === ciclo || x.ciclo === 'Todos los ciclos'); }).sort(function (a, b) { return (a.fecha + a.desde) < (b.fecha + b.desde) ? -1 : 1; });
+    var it = mios.filter(function (x) { return x.fecha >= hoy; })[0] || mios[0], fechaTxt = '';
+    if (it) { var d = new Date(it.fecha + 'T12:00:00'); if (!isNaN(d.getTime())) fechaTxt = DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
+    return { texto: cfg.avisoFormalizacion, ciclo: ciclo, fecha: it ? it.fecha : '', fechaTxt: fechaTxt, desde: it ? str(it.desde) : '', hasta: it ? str(it.hasta) : '', lugar: it ? str(it.lugar) : '' };
+  }
+  function avisoFormalizacionHtml(f) {
+    var a = formalizacionDe(f);
+    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef4ff;border:2px solid #b9cff3;border-radius:14px"><tr><td style="padding:16px 18px;color:#12347a;font-size:14.5px;line-height:1.6">' +
+      '&#128204; <b>' + esc(a.texto) + '</b>' + (a.fechaTxt ? '<br><br>&#128197; Su fecha (' + esc(a.ciclo) + '): <b>' + esc(a.fechaTxt) + (a.desde ? ', de ' + esc(a.desde) + (a.hasta ? ' a ' + esc(a.hasta) : '') + ' h' : '') + '</b>' + (a.lugar ? ' · ' + esc(a.lugar) : '') : '') + '</td></tr></table>';
+  }
   function correoCopiaFicha(f, motivo) {
-    var tit = motivo === 'matricula' ? '¡Matrícula registrada!' : motivo === 'actualizacion' ? 'Datos actualizados' : '¡Recibimos su ficha de matrícula!';
+    var tit = motivo === 'matricula' ? '¡Matrícula registrada!' : motivo === 'actualizacion' ? 'Datos actualizados' : 'Recibimos su ficha de matrícula';
     var intro = motivo === 'matricula' ? 'Le confirmamos que <b>' + esc(nombreEstudiante(f)) + '</b> quedó matriculado/a' + (f.numeroMatricula ? ' con el <b>N° de matrícula ' + esc(f.numeroMatricula) + '</b>' : '') + '. Adjuntamos una copia de la ficha.' :
       'Le enviamos una copia de la ficha de matrícula de <b>' + esc(nombreEstudiante(f)) + '</b> con los datos registrados. Si detecta un error, puede solicitar una corrección desde la plataforma.';
-    return correoBase({ para: f.apo_email, asunto: tit, titulo: tit, intro: intro, cuerpo: fichaResumenHtml(f, false),
+    return correoBase({ para: f.apo_email, asunto: tit, titulo: tit, intro: intro, cuerpo: (motivo === 'matricula' ? '' : avisoFormalizacionHtml(f) + '<div style="height:14px"></div>') + fichaResumenHtml(f, false),
       adjuntoHtml: fichaResumenHtml(f, true), adjuntoNombre: ('Ficha_Matricula_' + nombreEstudiante(f)).replace(/[^\wÁÉÍÓÚáéíóúÑñ]+/g, '_') + '.pdf' });
   }
 
@@ -2141,6 +2207,7 @@ function crearBackendDemo() {
           buttons: [{ text: 'Cerrar', cls: 'ghost', value: true }] });
       }, 700);
     },
+    infoCorreo: function () { return { remitente: 'modo demostración (no se envían correos reales)', cuota: 100, demo: true }; },
     saveFile: function (nombre, mime, b64) {
       if (b64.length > 3000000) throw Object.assign(new Error('x'), { userMsg: 'En modo demostración el archivo debe pesar menos de 2 MB.' });
       return 'data:' + mime + ';base64,' + b64;
@@ -2536,14 +2603,15 @@ var UI = (function () {
   }
   /* ---------------- portada: fotos y carrusel ---------------- */
   // Los archivos de Google Drive se muestran mediante su miniatura pública (deben estar compartidos «con el enlace»).
-  function imgSrc(u) {
+  function imgSrc(u, ancho) {
     u = String(u || '').trim();
     var m = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]+)/);
-    return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1920' : u;
+    // lh3 entrega la imagen ya reducida desde los servidores de Google (mucho más rápido que la vista de Drive)
+    return m ? 'https://lh3.googleusercontent.com/d/' + m[1] + '=w' + (ancho || 1280) : u;
   }
   // Reduce la foto antes de subirla (máx. 1600 px, JPG) para que cargue rápido en celulares.
   function comprimirImagen(file, max) {
-    max = max || 1600;
+    max = max || 1280;
     return new Promise(function (res, rej) {
       var r = new FileReader();
       r.onerror = rej;
@@ -2554,7 +2622,7 @@ var UI = (function () {
           var k = Math.min(1, max / Math.max(img.width, img.height)), cv = document.createElement('canvas');
           cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
           cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-          res(cv.toDataURL('image/jpeg', 0.82).split(',')[1]);
+          res(cv.toDataURL('image/jpeg', 0.74).split(',')[1]);
         };
         img.src = r.result;
       };
@@ -2565,7 +2633,8 @@ var UI = (function () {
     items = (items || []).filter(function (x) { return x && x.url; });
     if (!items.length) return '';
     return '<div class="carrusel" data-carrusel><div class="car-pista">' + items.map(function (it, i) {
-      return '<figure class="car-slide' + (i === 0 ? ' activo' : '') + '"><img src="' + esc(imgSrc(it.url)) + '" alt="' + esc(it.titulo || 'Actividad del colegio') + '" loading="' + (i ? 'lazy' : 'eager') + '">' +
+      var ancho = window.innerWidth < 700 ? 800 : 1280;
+      return '<figure class="car-slide' + (i === 0 ? ' activo' : '') + '"><img ' + (i === 0 ? 'src' : 'data-src') + '="' + esc(imgSrc(it.url, ancho)) + '" alt="' + esc(it.titulo || 'Actividad del colegio') + '" decoding="async"' + (i === 0 ? ' fetchpriority="high"' : '') + ' onload="this.classList.add(\'listo\')">' +
         (it.titulo || it.texto ? '<figcaption><b>' + esc(it.titulo || '') + '</b>' + (it.texto ? '<span>' + esc(it.texto) + '</span>' : '') + '</figcaption>' : '') + '</figure>';
     }).join('') + '</div>' + (items.length > 1 ? '<button class="car-btn prev" data-car="-1" aria-label="Anterior">‹</button><button class="car-btn next" data-car="1" aria-label="Siguiente">›</button>' +
       '<div class="car-puntos">' + items.map(function (x, i) { return '<button data-ir="' + i + '" class="' + (i === 0 ? 'activo' : '') + '" aria-label="Foto ' + (i + 1) + '"></button>'; }).join('') + '</div>' : '') + '</div>';
@@ -2574,8 +2643,13 @@ var UI = (function () {
     $$('[data-carrusel]', root).forEach(function (car) {
       var slides = $$('.car-slide', car), puntos = $$('.car-puntos button', car), i = 0, t = null;
       if (slides.length < 2) return;
+      // las fotos siguientes se descargan recién cuando la primera ya se ve (la portada abre rápido)
+      function cargar(k) { var im = slides[k % slides.length].querySelector('img[data-src]'); if (im) { im.src = im.getAttribute('data-src'); im.removeAttribute('data-src'); } }
+      var img0 = slides[0].querySelector('img');
+      if (img0.complete) cargar(1); else img0.addEventListener('load', function () { cargar(1); });
       function ir(n) {
         i = (n + slides.length) % slides.length;
+        cargar(i); cargar(i + 1);
         slides.forEach(function (s, k) { s.classList.toggle('activo', k === i); });
         puntos.forEach(function (p, k) { p.classList.toggle('activo', k === i); });
       }
@@ -2589,6 +2663,30 @@ var UI = (function () {
       car.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
       car.addEventListener('touchend', function (e) { if (x0 === null) return; var dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) { ir(i + (dx < 0 ? 1 : -1)); auto(); } x0 = null; });
       auto();
+    });
+  }
+
+  /* En el celular, los botones secundarios (clase «sec») se agrupan en «⋯ Más opciones»
+     para que la pantalla quede ordenada y los botones principales sean grandes y fáciles de tocar. */
+  function compactar(root) {
+    $$('.acciones', root || document).forEach(function (bar) {
+      var secs = $$('.sec', bar);
+      if (!secs.length || bar.querySelector('.mas-btn')) return;
+      var b = document.createElement('button');
+      b.className = 'btn ghost mas-btn'; b.type = 'button'; b.textContent = '⋯ Más';
+      b.onclick = function () {
+        modal({
+          title: 'Más opciones',
+          html: '<div class="hoja-acciones">' + secs.map(function (s, i) {
+            return '<button class="' + s.className.replace(/\bsec\b/, '').replace(/\bsm\b/, '') + '" data-hi="' + i + '">' + s.innerHTML + '</button>';
+          }).join('') + '</div>',
+          buttons: [{ text: 'Cerrar', cls: 'ghost', value: null }],
+          onOpen: function (el, cerrar) {
+            el.addEventListener('click', function (e) { var x = e.target.closest('[data-hi]'); if (x) { cerrar(null); secs[+x.dataset.hi].click(); } });
+          }
+        });
+      };
+      bar.appendChild(b);
     });
   }
 
@@ -2619,7 +2717,7 @@ var UI = (function () {
   return {
     esc: esc, $: $, $$: $$, si: si, sleep: sleep, debounce: debounce, api: api, loading: loading, done: done, toast: toast,
     modal: modal, success: success, error: error, info: info, confirm: confirm, intentar: intentar, faltantes: faltantes, resaltar: resaltar,
-    formHtml: formHtml, calendarioHtml: calendarioHtml, carruselHtml: carruselHtml, activarCarrusel: activarCarrusel, imgSrc: imgSrc, comprimirImagen: comprimirImagen, leer: leer, enlazar: enlazar, validar: validar, marcarErrores: marcarErrores, secciones: secciones,
+    formHtml: formHtml, compactar: compactar, calendarioHtml: calendarioHtml, carruselHtml: carruselHtml, activarCarrusel: activarCarrusel, imgSrc: imgSrc, comprimirImagen: comprimirImagen, leer: leer, enlazar: enlazar, validar: validar, marcarErrores: marcarErrores, secciones: secciones,
     aISO: aISO, fechaLarga: fechaLarga, iniciales: iniciales, nombreEst: nombreEst, nombreApo: nombreApo, badgeEstado: badgeEstado,
     archivoBase64: archivoBase64, leerExcel: leerExcel
   };
@@ -2819,6 +2917,12 @@ var Familia = (function () {
     var t = UI.$('#cnt-docs'); if (t) t.textContent = leidos + '/' + docsReq().length;
   }
 
+  // Aclara que la ficha no reemplaza la formalización presencial, con la fecha del ciclo si está en el calendario.
+  function avisoTexto() {
+    var a = F.formalizacion || {};
+    return '<b class="t">' + esc(a.texto || 'Importante: enviar esta ficha no completa la matrícula. La matrícula se formaliza en el establecimiento en la fecha indicada.') + '</b>' +
+      (a.fechaTxt ? '<br><span>📅 Su fecha (' + esc(a.ciclo) + '): <b>' + esc(a.fechaTxt) + (a.desde ? ', de ' + esc(a.desde) + (a.hasta ? ' a ' + esc(a.hasta) : '') + ' h' : '') + '</b>' + (a.lugar ? ' · 📍 ' + esc(a.lugar) : '') + '</span>' : '');
+  }
   function botonSolicitud() {
     return F.solicitudPendiente ? '<div style="margin-top:10px"><span class="badge b-gold" style="font-size:13px;padding:6px 12px">⏳ Solicitud de corrección enviada · en revisión</span></div>' :
       '<div style="margin-top:10px"><button class="btn sm gold" id="btn-solicitar">✏️ Solicitar corrección de datos</button></div>';
@@ -2855,6 +2959,7 @@ var Familia = (function () {
       '<h2>' + esc(nombre()) + '</h2><div class="row small"><span class="badge b-blue">RUT ' + esc(F.rut) + '</span><span class="badge b-gold">Nivel ' + esc(cfg.anio) + ': ' + esc(F.curso) + '</span>' +
       (F.numeroMatricula ? '<span class="badge b-gold">N° matrícula ' + esc(F.numeroMatricula) + '</span>' : '') + '<span id="est-badge">' + UI.badgeEstado(F.estado) + '</span></div>' +
       '<p style="margin:12px 0 0">' + esc(cfg.mensajeBienvenida) + '</p></div></section>' +
+      (F.estado !== 'matriculada' && F.estado !== 'retirado' ? '<div class="aviso-formal"><div class="ico">📌</div><div>' + avisoTexto() + '</div></div>' : '') +
       (act ? '<div class="update-banner"><div class="ico">✏️</div><div><b class="t">El establecimiento solicita actualizar ' + (ped ? 'estos datos' : 'los datos de la ficha') + '</b><br>' +
         '<span class="muted">Los datos ya registrados se mantienen: solo modifique lo que haya cambiado (dirección, teléfono, correo, apoderado/a suplente, etc.) y presione «Enviar datos actualizados».</span>' +
         (nombresPedidos ? '<div class="chips">' + nombresPedidos.map(function (n) { return '<span class="badge b-gold">' + esc(n) + '</span>'; }).join('') + '</div>' : '') + '</div></div>' : '') +
@@ -2873,7 +2978,7 @@ var Familia = (function () {
       '<div class="savebar"><span class="autosave" id="autosave"><span class="dot"></span><span class="txt">' + (lock ? 'Ficha enviada' : 'Los cambios se guardan automáticamente') + '</span></span>' +
       '<span class="grow"></span>' +
       (lock ? '<span class="badge b-matriculada" style="font-size:14px;padding:8px 14px">✓ ' + (F.estado === 'matriculada' ? 'Matriculado/a' : 'Ficha enviada') + '</span>' :
-        '<button class="btn ok lg" id="btn-enviar">' + (act && F.estado !== 'pendiente' && F.estado !== 'en_proceso' ? '📤 Enviar datos actualizados' : '💾 Guardar y enviar ficha') + '</button>') + '</div>';
+        '<button class="btn ok lg" id="btn-enviar">' + (act && F.estado !== 'pendiente' && F.estado !== 'en_proceso' ? '📤 Enviar datos actualizados' : '📤 Enviar matrícula') + '</button>') + '</div>';
     UI.$('#app').innerHTML = html;
     if (ped) ped.forEach(function (id) { var w = document.querySelector('#tab-ficha [data-wrap="' + CSS.escape(id) + '"]'); if (w) w.classList.add('pedido'); });
     App.enlazarTopbar();
@@ -2971,7 +3076,7 @@ var Familia = (function () {
       .map(function (d) { return { id: 'doc:' + d.id, etiqueta: 'Confirmar lectura de: ' + d.titulo, seccion: 'Documentos del colegio', doc: true }; }));
     UI.marcarErrores(root, falta);
     if (falta.length) return UI.faltantes(falta, irA);
-    var ok = await UI.confirm(actualizando() ? '¿Enviar los datos actualizados?' : '¿Guardar y enviar la ficha?', 'Revise que los datos estén correctos. Una vez enviada, <b>la ficha no podrá modificarse</b>, salvo autorización del equipo del establecimiento.', 'Sí, enviar', 'ok');
+    var ok = await UI.confirm(actualizando() ? '¿Enviar los datos actualizados?' : '¿Enviar la matrícula?', 'Revise que los datos estén correctos. Una vez enviada, <b>la ficha no podrá modificarse</b>, salvo autorización del equipo del establecimiento.' + (actualizando() ? '' : '<br><br>' + avisoTexto()), 'Sí, enviar', 'ok');
     if (!ok) return;
     await vaciar();
     var r = await UI.intentar(function () { return UI.api('enviarFicha', { datos: datos, aceptaciones: acc }); }, 'Guardando la ficha…');
@@ -2981,7 +3086,7 @@ var Familia = (function () {
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (r.actualizacion) return UI.success('¡Datos actualizados!', 'Los cambios en la ficha de <b>' + esc(nombre()) + '</b> quedaron registrados el ' + esc(r.fecha) + '.' + (r.correoEnviado ? '<br>📧 Enviamos una copia actualizada a ' + esc(r.correo) + '.' : '') + '<br><br>🔒 La ficha vuelve a quedar cerrada. ¡Gracias por mantener sus datos al día!', { boton: 'Perfecto' });
-    UI.success('¡Ficha guardada y enviada!', 'Los datos de <b>' + esc(nombre()) + '</b> quedaron registrados correctamente el ' + esc(r.fecha) + '.' + (r.correoEnviado ? '<br>📧 Enviamos una copia de la ficha a ' + esc(r.correo) + '.' : '') + '<br><br>🔒 Desde ahora la ficha <b>no puede modificarse</b>. Si necesita realizar un cambio, comuníquese con el establecimiento: solo el equipo puede autorizar su reapertura.', { boton: 'Perfecto' });
+    UI.success('¡Ficha de matrícula enviada!', avisoTexto() + '<br><br>Los datos de <b>' + esc(nombre()) + '</b> quedaron registrados correctamente el ' + esc(r.fecha) + '.' + (r.correoEnviado ? '<br>📧 Enviamos una copia de la ficha a ' + esc(r.correo) + '.' : '') + '<br><br>🔒 Desde ahora la ficha <b>no puede modificarse</b>. Si necesita realizar un cambio, comuníquese con el establecimiento: solo el equipo puede autorizar su reapertura.', { boton: 'Perfecto' });
   }
 
   return { iniciar: iniciar };
@@ -3057,10 +3162,10 @@ var Staff = (function () {
     var cursos = [], anio = S.form.config.anio;
     ordenarPorGrupo().forEach(function (f) { var g = grupoDe(f); if (cursos.indexOf(g) < 0) cursos.push(g); });
     if (cursos.indexOf(filtro.curso) < 0) filtro.curso = '';
-    main().innerHTML = UI.calendarioHtml(S.form.config, '') + '<div class="page-h"><div><div class="eyebrow">Proceso de matrícula ' + esc(anio) + '</div><h2>Fichas de matrícula</h2></div><span class="badge b-blue">' + fichas.length + ' estudiantes</span><span class="grow"></span>' +
+    main().innerHTML = UI.calendarioHtml(S.form.config, '') + '<div class="page-h acciones"><div><div class="eyebrow">Proceso de matrícula ' + esc(anio) + '</div><h2>Fichas de matrícula</h2></div><span class="badge b-blue">' + fichas.length + ' estudiantes</span><span class="grow"></span>' +
       '<button class="btn gold" data-a="nueva">➕ Nuevo estudiante</button>' +
-      (gestion() ? '<button class="btn ghost" data-a="habilitar">🔓 Habilitar edición</button><button class="btn ghost" data-a="importar">📥 Cargar / actualizar base</button><button class="btn ghost" data-a="descargar">⬇ Descargar base de datos</button><button class="btn bad" data-a="borrar-todo" title="Eliminar todas las fichas">🗑 Eliminar todas</button>' :
-        '<button class="btn ghost" data-a="exportar">⬇ Exportar Excel</button>') + '</div>' +
+      (gestion() ? '<button class="btn ghost sec" data-a="habilitar">🔓 Habilitar edición</button><button class="btn ghost sec" data-a="importar">📥 Cargar / actualizar base</button><button class="btn ghost sec" data-a="descargar">⬇ Descargar base de datos</button><button class="btn bad sec" data-a="borrar-todo" title="Eliminar todas las fichas">🗑 Eliminar todas las fichas</button>' :
+        '<button class="btn ghost sec" data-a="exportar">⬇ Exportar Excel</button>') + '</div>' +
       '<div class="toolbar"><div class="seg" id="fl-agr"><button data-g="nivel" class="' + (filtro.agrupar === 'nivel' ? 'active' : '') + '">Por nivel ' + esc(anio) + '</button><button data-g="anterior" class="' + (filtro.agrupar === 'anterior' ? 'active' : '') + '">Por curso de procedencia</button></div>' +
       '<select id="fl-curso"><option value="">' + (filtro.agrupar === 'anterior' ? 'Todos los cursos' : 'Todos los niveles') + '</option>' + cursos.map(function (c) { return '<option' + (c === filtro.curso ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
       '<select id="fl-estado"><option value="">Todos los estados</option>' + Object.keys(S.form.estados).map(function (k) { return '<option value="' + k + '"' + (k === filtro.estado ? ' selected' : '') + '>' + esc(S.form.estados[k]) + '</option>'; }).join('') + '</select>' +
@@ -3070,6 +3175,7 @@ var Staff = (function () {
     UI.$('#fl-estado').onchange = function () { filtro.estado = this.value; pintarLista(); };
     UI.$('#fl-q').oninput = UI.debounce(function () { filtro.q = UI.$('#fl-q').value; pintarLista(); }, 200);
     main().onclick = clickFichas;
+    UI.compactar(main());
     pintarLista();
   }
   function ordenarPorGrupo() {
@@ -3428,14 +3534,14 @@ var Staff = (function () {
         return '<label class="check" style="margin-bottom:10px" data-wrap="doc:' + esc(d.id) + '"><input type="checkbox" data-acc="' + esc(d.id) + '"' + (a ? ' checked' : '') + (puede ? '' : ' disabled') + '><span>' + esc(d.titulo) +
           (a ? ' <span class="small muted">— ' + esc(a.fecha || '') + ' · ' + esc(a.por || '') + '</span>' : '') + '</span></label>';
       }).join('') + '</section>' +
-      '<div class="actionbar"><span class="autosave" id="autosave"><span class="dot"></span><span class="txt">' + (puede ? 'Guardado automático activado' : 'Solo lectura') + '</span></span><span class="grow"></span>' +
+      '<div class="actionbar acciones"><span class="autosave" id="autosave"><span class="dot"></span><span class="txt">' + (puede ? 'Guardado automático activado' : 'Solo lectura') + '</span></span><span class="grow"></span>' +
       (puede ? '<button class="btn" data-e="guardar">💾 Guardar cambios</button>' : '') +
-      (!mat ? '<button class="btn ok" data-e="matricular">✅ Cerrar matrícula</button>' : '') +
-      '<button class="btn ghost" data-e="imprimir">🖨 Imprimir</button><button class="btn ghost" data-e="pdf">⬇ PDF</button><button class="btn wa" data-e="wa">💬 WhatsApp</button>' +
-      (!puede ? '<button class="btn gold" data-e="pedir-apertura">📨 Solicitar apertura a Gestión</button>' : '') +
-      (gestion() ? '<button class="btn gold" data-e="habilitar">🔓 Habilitar edición</button>' + (abierta ? '<button class="btn ghost" data-e="cerrar-edicion">🔒 Cerrar edición</button>' : '') : '') +
-      '<button class="btn ghost" data-e="clave">🔑 Clave familia</button>' +
-      (gestion() ? '<button class="btn bad" data-e="eliminar" title="Eliminar ficha">🗑</button>' : '') + '</div>';
+      (!mat ? '<button class="btn ok" data-e="matricular">✅ Matricular</button>' : '') +
+      (!puede ? '<button class="btn gold" data-e="pedir-apertura">📨 Solicitar apertura</button>' : '') +
+      '<button class="btn ghost' + (puede || !mat ? ' sec' : '') + '" data-e="imprimir">🖨 Imprimir</button><button class="btn ghost sec" data-e="pdf">⬇ Descargar PDF</button><button class="btn wa sec" data-e="wa">💬 Enviar por WhatsApp</button>' +
+      (gestion() ? '<button class="btn gold sec" data-e="habilitar">🔓 Habilitar edición</button>' + (abierta ? '<button class="btn ghost sec" data-e="cerrar-edicion">🔒 Cerrar edición</button>' : '') : '') +
+      '<button class="btn ghost sec" data-e="clave">🔑 Clave de la familia</button>' +
+      (gestion() ? '<button class="btn bad sec" data-e="eliminar" title="Eliminar ficha">🗑 Eliminar ficha</button>' : '') + '</div>';
     UI.enlazar(UI.$('#ed-form'), function (id) {
       var d = UI.leer(UI.$('#ed-form'));
       ed.pend[id] = d[id]; ed.f[id] = d[id];
@@ -3447,6 +3553,7 @@ var Staff = (function () {
     var num = UI.$('#m-num'); if (num) num.onchange = function () { guardarMeta({ numeroMatricula: this.value }, 'N° de matrícula actualizado'); };
     var plazo = UI.$('#m-plazo'); if (plazo) plazo.onchange = function () { guardarMeta({ fechaLimite: this.value }, this.value ? 'Plazo especial guardado' : 'Plazo especial quitado'); };
     main().onclick = clickEditor;
+    UI.compactar(main());
     main().onchange = function (e) {
       var c = e.target.closest('[data-acc]'); if (!c) return;
       var a = {}; a[c.dataset.acc] = c.checked;
@@ -3508,7 +3615,7 @@ var Staff = (function () {
       if (sug === undefined) return;
       var anio = S.form.config.anio;
       var r = await UI.modal({
-        title: '✅ Cerrar proceso de matrícula', size: 'wide',
+        title: '✅ Confirmar matrícula', size: 'wide',
         html: '<div class="grid"><div class="field"><label>N° de matrícula<span class="req">*</span></label><input id="mt-num" value="' + esc(sug) + '" style="font-size:22px;font-family:var(--font-d);font-weight:700">' +
           '<small class="help">Sugerido automáticamente (el siguiente disponible). Puede cambiarlo.</small></div>' +
           '<div class="field"><label>Estudiante</label><div class="meta-v" style="padding-top:8px">' + esc(nombreCompleto(f)) + '<div class="small muted">RUT ' + esc(f.rut) + '</div></div></div>' +
@@ -3772,8 +3879,8 @@ var Staff = (function () {
   async function vUsuarios() {
     usuarios = await UI.api('listarUsuarios');
     var color = { gestion: 'b-gold', docente: 'b-blue', asistente: 'b-desbloqueada' };
-    main().innerHTML = '<div class="page-h"><h2>Usuarios funcionarios</h2><span class="badge b-blue">' + usuarios.length + '</span><span class="grow"></span>' +
-      '<button class="btn gold" data-u="nuevo">➕ Nuevo funcionario</button><button class="btn ghost" data-u="masivo">📥 Carga masiva (Excel)</button><button class="btn ghost" data-u="plantilla">⬇ Plantilla Excel</button></div>' +
+    main().innerHTML = '<div class="page-h acciones"><h2>Usuarios funcionarios</h2><span class="badge b-blue">' + usuarios.length + '</span><span class="grow"></span>' +
+      '<button class="btn gold" data-u="nuevo">➕ Nuevo funcionario</button><button class="btn ghost sec" data-u="masivo">📥 Carga masiva (Excel)</button><button class="btn ghost sec" data-u="plantilla">⬇ Plantilla Excel</button></div>' +
       '<div class="card" style="padding:12px 16px;margin-bottom:16px;background:var(--sky)"><span class="small">📧 El <b>usuario</b> de cada funcionario es su <b>correo institucional</b>. La <b>clave se genera automáticamente y se envía a ese correo</b>; al ingresar por primera vez se le pide crear una clave personal. Docentes y asistentes solo ven, editan e imprimen las fichas asignadas.</span></div>' +
       '<section class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table class="t"><thead><tr><th>Nombre</th><th>Usuario (correo)</th><th class="hide-sm">RUT</th><th>Perfil</th><th>Asignación</th><th class="hide-sm hide-md">Último acceso</th><th></th></tr></thead><tbody>' +
       usuarios.map(function (u) {
@@ -3783,6 +3890,7 @@ var Staff = (function () {
           '<button class="icon-btn" title="Enviar nueva clave" data-u="clave" data-id="' + esc(u.id) + '">🔑</button>' + (u.id !== P.id ? '<button class="icon-btn" title="Eliminar" data-u="eliminar" data-id="' + esc(u.id) + '">🗑</button>' : '') + '</div></td></tr>';
       }).join('') + '</tbody></table></div></section>';
     main().onclick = clickUsuarios;
+    UI.compactar(main());
   }
   async function clickUsuarios(e) {
     var b = e.target.closest('[data-u]'); if (!b) return;
@@ -4082,6 +4190,8 @@ var Staff = (function () {
       inp('nombreColegio', 'Nombre del establecimiento') + inp('anio', 'Año escolar de la matrícula', '2027') + inp('rbd', 'RBD') + inp('ciudad', 'Ciudad') +
       inp('direccion', 'Dirección') + inp('telefono', 'Teléfono') + inp('email', 'Correo de contacto') + inp('directorNombre', 'Nombre del Director/a (firma)') +
       inp('urlPlataforma', 'Dirección (URL) de esta plataforma', 'https://usuario.github.io/fichas-matricula/', 'Se incluye en los correos y permite mostrar la insignia en ellos.') + '</div></section>' +
+      '<section class="card"><div class="card-h"><div class="sec-num">📧</div><h3>Envío de correos</h3><span class="grow"></span><button class="btn gold" id="cf-mail">📧 Enviar correo de prueba</button></div>' +
+      '<p class="muted small" style="margin:-6px 0 0">Si las familias o funcionarios no reciben las claves o copias de fichas, use esta prueba: muestra la cuenta que envía, la cantidad de correos disponibles hoy y el motivo exacto si hay un error. Cada envío también queda en la <b>Bitácora</b>.</p></section>' +
       '<section class="card"><div class="card-h"><div class="sec-num">#</div><h3>Numeración de matrícula por ciclo</h3></div>' +
       '<p class="muted small" style="margin-top:-6px">Cada ciclo usa su propio tramo de números y nunca se repiten. Ej.: Preescolar desde 1, Primer Ciclo desde 101, Segundo Ciclo desde 401, Media desde 701.</p><div class="grid">' +
       inp('numInicioPreescolar', 'Preescolar comienza en', '1') + inp('numInicioPrimerCiclo', 'Primer Ciclo comienza en', '101') + inp('numInicioSegundoCiclo', 'Segundo Ciclo comienza en', '401') + inp('numInicioMedia', 'Enseñanza Media comienza en', '701') + '</div></section>' +
@@ -4094,6 +4204,7 @@ var Staff = (function () {
       '<small class="help">El ciclo se calcula automáticamente: Prekínder/Kínder → Preescolar · 1° a 4° Básico → Primer Ciclo · 5° a 8° Básico → Segundo Ciclo · 1° a 4° Medio → Enseñanza Media.</small></section>' +
       '<div class="actionbar"><span class="grow"></span><button class="btn ok lg" id="cf-save">💾 Guardar configuración</button></div>';
     UI.$('[data-ir-portada]').onclick = function () { ir('portada'); };
+    UI.$('#cf-mail').onclick = probarCorreo;
     UI.$('#cf-ver').onclick = function () { S.form.config.videoUrl = UI.$('#cf-videoUrl').value; App.tutorial(); };
     UI.$('#cf-save').onclick = async function () {
       var cfg = {};
@@ -4103,6 +4214,26 @@ var Staff = (function () {
       await refrescarForm();
       UI.success('Configuración guardada', 'Los cambios ya están disponibles para todos los usuarios.');
     };
+  }
+
+  async function probarCorreo() {
+    var para = await UI.modal({ title: '📧 Enviar correo de prueba',
+      html: '<div class="field"><label>Enviar la prueba a</label><input id="pm" type="email" value="' + esc(P.email || '') + '"></div>',
+      buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: 'Enviar prueba', cls: 'gold', onClick: function (el) { return el.querySelector('#pm').value.trim(); } }] });
+    if (!para) return;
+    var r = await UI.intentar(function () { return UI.api('probarCorreo', { para: para }); }, 'Enviando correo de prueba…');
+    if (!r) return;
+    var info = '<div style="text-align:left;background:var(--sky-2);border-radius:12px;padding:12px 14px;margin-top:12px;font-size:14px">' +
+      '<div><b>Enviado a:</b> ' + esc(r.para) + '</div><div><b>Cuenta que envía:</b> ' + esc(r.remitente || '—') + '</div>' +
+      '<div><b>Correos disponibles hoy:</b> ' + esc(r.cuota === undefined ? '—' : r.cuota) + '</div></div>';
+    if (r.enviado) {
+      UI.success('Correo enviado', 'Google aceptó el envío.' + info +
+        '<p class="small muted" style="text-align:left;margin-top:12px">Si no llega en 5 minutos: revise <b>Spam / correo no deseado</b>; en correos institucionales pida al administrador de Google Workspace revisar la <b>cuarentena</b> y agregar <b>' + esc(r.remitente || 'la cuenta que envía') + '</b> como remitente seguro.</p>');
+    } else {
+      UI.modal({ center: true, icon: 'error', title: 'No se pudo enviar', html: '<p class="muted">Motivo informado por Google:</p><p style="background:var(--bad-bg);color:#8a1f1f;border-radius:10px;padding:10px 12px;font-weight:700">' + esc(r.error || 'desconocido') + '</p>' + info +
+        '<p class="small muted" style="text-align:left;margin-top:12px">Lo más común: faltan permisos. En Apps Script ejecute la función <b>probarCorreo</b>, acepte los permisos y vuelva a publicar con <b>Gestionar implementaciones ▸ Nueva versión</b>. Si dice que se superó la cuota, espere hasta mañana.</p>',
+        buttons: [{ text: 'Entendido', cls: 'bad', value: true }] });
+    }
   }
 
   /* ================================ PORTADA ================================ */
@@ -4119,7 +4250,8 @@ var Staff = (function () {
       '<div class="field"><label>Etiqueta superior</label><input data-pf="portadaEtiqueta" value="' + val('portadaEtiqueta') + '" placeholder="Admisión y matrículas"><small class="help">Se le agrega el año automáticamente.</small></div>' +
       '<div class="field"><label>Palabra o frase destacada (en dorado)</label><input data-pf="portadaDestacado" value="' + val('portadaDestacado') + '" placeholder="aquí."></div>' +
       '<div class="field full"><label>Frase principal</label><input data-pf="portadaTitulo" value="' + val('portadaTitulo') + '" placeholder="Un futuro que comienza"></div>' +
-      '<div class="field full"><label>Mensaje de bienvenida</label><textarea data-pf="mensajeBienvenida" rows="3">' + val('mensajeBienvenida') + '</textarea></div></div>' +
+      '<div class="field full"><label>Mensaje de bienvenida</label><textarea data-pf="mensajeBienvenida" rows="3">' + val('mensajeBienvenida') + '</textarea></div>' +
+      '<div class="field full"><label>Aviso de formalización de la matrícula</label><textarea data-pf="avisoFormalizacion" rows="3">' + val('avisoFormalizacion') + '</textarea><small class="help">Se muestra a las familias en su ficha, al enviarla y en el correo con la copia, junto con la fecha de su ciclo.</small></div></div>' +
       '<div class="preview-portada" id="pv"></div></section>' +
       '<section class="card"><div class="card-h"><div class="sec-num">📸</div><h3>Fotos de actividades (carrusel)</h3><span class="grow"></span>' +
       '<button class="btn sm gold" id="ft-add">➕ Subir fotos</button><input type="file" id="ft-file" accept="image/*" multiple hidden><button class="btn sm ghost" id="ft-url">🔗 Agregar por enlace</button></div>' +
@@ -4140,7 +4272,7 @@ var Staff = (function () {
     }
     function pintarFotos() {
       UI.$('#ft-grid').innerHTML = fotos.length ? fotos.map(function (it, i) {
-        return '<div class="foto-item" data-fi="' + i + '"><div class="ph" style="background-image:url(\'' + esc(UI.imgSrc(it.url)) + '\')"></div><div class="fi-b">' +
+        return '<div class="foto-item" data-fi="' + i + '"><div class="ph" style="background-image:url(\'' + esc(UI.imgSrc(it.url, 480)) + '\')"></div><div class="fi-b">' +
           '<input data-k="titulo" placeholder="Título (ej.: Aniversario 2026)" value="' + esc(it.titulo || '') + '"><input data-k="texto" placeholder="Descripción breve (opcional)" value="' + esc(it.texto || '') + '">' +
           '<div class="fi-acts"><button class="icon-btn" data-fm="-1" title="Subir">↑</button><button class="icon-btn" data-fm="1" title="Bajar">↓</button><button class="icon-btn" data-fdel title="Quitar">🗑</button></div></div></div>';
       }).join('') : '<div class="empty" style="grid-column:1/-1"><div class="e-ico">🖼</div><p>Aún no hay fotos. Agregue fotos de actividades para que la portada sea más atractiva para las familias.</p></div>';
@@ -4400,7 +4532,7 @@ var App = (function () {
     var pasos = tipo === 'staff' ? [
       'En <b>Fichas de matrícula</b> verá los estudiantes ordenados por curso y por apellido.',
       'Pinche ✏️ para revisar o editar una ficha. Los cambios se guardan automáticamente.',
-      'Presione <b>✅ Registrar matrícula</b>: su nombre y RUT quedarán en el espacio de firma.',
+      'Presione <b>✅ Matricular</b>: su nombre y RUT quedarán en el espacio de firma.',
       'Use 🖨 para imprimir, ⬇ para descargar en PDF o 💬 para compartir por WhatsApp.',
       'Si una familia necesita corregir datos, use <b>🔓 Desbloquear para la familia</b>.',
       'En <b>Resumen estadístico</b> verá el avance por curso, nivel y ciclo.'
@@ -4409,7 +4541,8 @@ var App = (function () {
       'Revise y complete los datos de cada sección. Los marcados con <span class="req">*</span> son obligatorios.',
       'Cada cambio se <b>guarda automáticamente</b>: puede salir y volver a entrar cuando quiera.',
       'En <b>📚 Documentos del colegio</b> lea el PEI, el Reglamento Interno y el de Evaluación, y confirme su lectura.',
-      'Al terminar presione <b>💾 Guardar y enviar ficha</b>. Luego ya no podrá modificarla sin autorización del colegio.',
+      'Al terminar presione <b>📤 Enviar matrícula</b>. Luego ya no podrá modificarla sin autorización del colegio.',
+      'La matrícula se <b>formaliza en el establecimiento</b> en la fecha indicada para su ciclo (aparece arriba en el calendario).',
       'Puede cambiar su clave en el botón <b>🔑 Mi clave</b>.'
     ];
     return UI.modal({
