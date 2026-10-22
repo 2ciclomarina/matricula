@@ -621,11 +621,12 @@ function createCore_(env) {
   };
   var CICLOS = ['Preescolar', 'Primer Ciclo', 'Segundo Ciclo', 'Enseñanza Media', 'Otro'];
   // curso = nivel al que se matricula (año de la matrícula) · cursoAnterior = curso de procedencia
-  var FICHA_META = ['rut', 'numeroMatricula', 'curso', 'cursoAnterior', 'estado', 'editFamilia', 'editFuncionario', 'fechaLimite', 'fechaActualizacion', 'claveHash', 'debeCambiarClave', 'videoVisto', 'fechaEnvio',
+  var FICHA_META = ['rut', 'numeroMatricula', 'curso', 'cursoAnterior', 'estado', 'editFamilia', 'editFuncionario', 'fechaLimite', 'bienvenidaEnviada', 'fechaActualizacion', 'claveHash', 'debeCambiarClave', 'videoVisto', 'fechaEnvio',
     'ultimaModificacion', 'modificadoPor', 'matriculadoPorNombre', 'matriculadoPorRut', 'fechaMatricula',
     'aceptaciones', 'fechaIngreso', 'fechaRetiro'];
   var HEADERS = {
     Usuarios: ['id', 'nombre', 'rut', 'email', 'rol', 'cursos', 'fichas', 'claveHash', 'debeCambiarClave', 'activo', 'videoVisto', 'creado', 'ultimoAcceso', 'superadmin'],
+    Comunicados: ['id', 'fecha', 'publico', 'filtro', 'asunto', 'mensaje', 'imagenUrl', 'autor', 'total', 'enviados', 'estado', 'pendientes'],
     Solicitudes: ['id', 'tipo', 'rut', 'estudiante', 'solicitante', 'solicitanteEmail', 'motivo', 'fecha', 'estado', 'resolvio', 'fechaResolucion', 'comentario', 'codigo', 'codigoVence', 'codigoUsado'],
     Fichas: FICHA_META,
     Campos: ['id', 'seccion', 'etiqueta', 'tipo', 'opciones', 'obligatorio', 'editableFamilia', 'ayuda', 'orden', 'activo', 'sistema', 'condicion'],
@@ -968,8 +969,9 @@ function createCore_(env) {
 
   /* ------------------------------ correos ----------------------------- */
   // Todo envío queda en la Bitácora (enviado o con el motivo del error) para poder revisar qué pasó.
-  var ultimoErrorCorreo = '';
+  var ultimoErrorCorreo = '', previsualizando = false;
   function enviar(para, asunto, html, extra) {
+    if (previsualizando) { env.mail(para, asunto, html, extra); return true; }
     try { env.mail(para, asunto, html, extra); log('Sistema', 'Correo enviado', para + ' · ' + asunto); ultimoErrorCorreo = ''; return true; }
     catch (e) { ultimoErrorCorreo = str(e && e.message ? e.message : e); log('Sistema', 'ERROR al enviar correo', para + ' · ' + asunto + ' · ' + ultimoErrorCorreo); return false; }
   }
@@ -1945,15 +1947,17 @@ function createCore_(env) {
       '<div style="color:#e2c27d;font-size:12px;letter-spacing:3px;font-weight:bold;margin-top:14px;text-transform:uppercase">Admisión y matrículas ' + esc(cfg.anio) + '</div>' +
       '<div style="color:#ffffff;font-family:Georgia,\'Times New Roman\',serif;font-size:26px;margin-top:6px">' + esc(cfg.nombreColegio) + '</div></td></tr>' +
       '<tr><td style="height:6px;background:#e2c27d;font-size:0;line-height:0">&nbsp;</td></tr>' +
+      (o.importante ? '<tr><td style="background:#fff4d6;padding:11px 32px;color:#8a5d00;font-weight:bold;letter-spacing:2px;font-size:12px;text-transform:uppercase">&#128226; Información importante</td></tr>' : '') +
       '<tr><td style="padding:28px 32px 6px"><div style="font-family:Georgia,\'Times New Roman\',serif;color:#0a1f4d;font-size:24px;font-weight:bold">' + esc(o.titulo) + '</div>' +
       '<p style="color:#4a5872;font-size:15px;line-height:1.65;margin:12px 0 0">' + o.intro + '</p></td></tr>' +
+      (o.imagen ? '<tr><td style="padding:14px 32px 4px"><img src="cid:aviso" alt="Imagen del comunicado" style="display:block;width:100%;max-width:536px;height:auto;border-radius:12px"></td></tr>' : '') +
       (o.tarjeta ? '<tr><td style="padding:18px 32px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fbf7ec;border:2px dashed #e2c27d;border-radius:16px"><tr><td style="padding:20px 22px">' + o.tarjeta + '</td></tr></table></td></tr>' : '') +
       (o.cuerpo ? '<tr><td style="padding:6px 32px 18px">' + o.cuerpo + '</td></tr>' : '') +
       (url && o.boton !== false ? '<tr><td align="center" style="padding:6px 32px 26px"><a href="' + esc(url) + '" style="display:inline-block;background:#0a1f4d;color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:15px 34px;border-radius:999px">' + esc(o.textoBoton || 'Ingresar a la plataforma') + ' &rarr;</a></td></tr>' : '') +
       '<tr><td style="background:#f7f8fb;padding:18px 32px;color:#8a94a8;font-size:12px;line-height:1.5;text-align:center">Mensaje automático de la Plataforma de Fichas de Matrícula del ' + esc(cfg.nombreColegio) + '. No responda a este correo.' +
       (cfg.telefono || cfg.email ? '<br>Consultas: ' + esc([cfg.telefono, cfg.email].filter(Boolean).join(' · ')) : '') + '</td></tr></table></div>';
     var logo = url ? url.replace(/\/?$/, '/') + 'insignia.jpg' : '';
-    return enviar(o.para, o.asunto + ' – ' + cfg.nombreColegio, html, { logoUrl: logo, adjuntoHtml: o.adjuntoHtml, adjuntoNombre: o.adjuntoNombre });
+    return enviar(o.para, o.asuntoCompleto || (o.asunto + ' – ' + cfg.nombreColegio), html, { logoUrl: logo, adjuntoHtml: o.adjuntoHtml, adjuntoNombre: o.adjuntoNombre, imagenes: o.imagen ? { aviso: o.imagen } : null, bcc: o.bcc });
   }
   function dato(etq, val, grande) {
     return '<div style="font-size:12px;color:#8a94a8;margin-top:12px;text-transform:uppercase;letter-spacing:1px">' + etq + '</div>' +
@@ -2121,6 +2125,126 @@ function createCore_(env) {
     log(u.nombre, 'BORRADO MASIVO DE FICHAS', n + ' fichas eliminadas');
     return { eliminadas: n };
   };
+  /* ===================== Comunicaciones (Equipo de Gestión) ===================== */
+  // Correos disponibles hoy según Google (cuentas gratuitas ≈ 100 destinatarios/día; Google Workspace ≈ 1.500).
+  function cuotaHoy() { try { var i = env.infoCorreo ? env.infoCorreo() : {}; return typeof i.cuota === 'number' ? i.cuota : 100; } catch (e) { return 100; } }
+  var PUBLICOS = { apoderados: 'Apoderados', docentes: 'Docentes', asistentes: 'Asistentes de la educación', gestion: 'Equipo de Gestión' };
+  function destinatarios(publico, filtro) {
+    filtro = filtro || {};
+    var vistos = {}, out = [];
+    function agregar(e) { e = str(e).trim().toLowerCase(); if (emailValido(e) && !vistos[e]) { vistos[e] = 1; out.push(e); } }
+    if (publico === 'apoderados') {
+      var ciclos = lista(filtro.ciclos), niveles = lista(filtro.niveles).map(norm);
+      db.all('Fichas').forEach(function (f) {
+        if (!f.rut || f.estado === 'retirado') return;
+        if (ciclos.length && ciclos.indexOf(cicloDe(f.curso)) < 0) return;
+        if (niveles.length && niveles.indexOf(norm(f.curso)) < 0) return;
+        agregar(f.apo_email);
+        if (filtro.suplentes) agregar(f.sup_email);
+      });
+    } else {
+      var rol = { docentes: 'docente', asistentes: 'asistente', gestion: 'gestion' }[publico];
+      if (!rol) fail('Público no válido.');
+      db.all('Usuarios').forEach(function (u) { if (u.rol === rol && si(u.activo)) agregar(u.email); });
+    }
+    return out;
+  }
+  function htmlMensaje(t) { return esc(t).replace(/\r?\n/g, '<br>'); }
+  function correoComunicado(c, bcc) {
+    var cfg = getConfig(), cuenta = {}; try { cuenta = env.infoCorreo ? env.infoCorreo() : {}; } catch (e) { cuenta = {}; }
+    return correoBase({ para: cuenta.remitente && emailValido(cuenta.remitente) ? cuenta.remitente : (cfg.email || bcc[0]), bcc: bcc, importante: true,
+      asuntoCompleto: '📢 IMPORTANTE: ' + c.asunto + ' – ' + cfg.nombreColegio, titulo: c.asunto, intro: htmlMensaje(c.mensaje), imagen: c.imagenUrl, textoBoton: 'Ir a la plataforma' });
+  }
+  // Envía la siguiente tanda de un comunicado (grupos de 40 en copia oculta), sin superar la cuota del día.
+  function procesarComunicado(id) {
+    var c = db.all('Comunicados').filter(function (x) { return x.id === id; })[0];
+    if (!c) fail('Comunicado no encontrado.');
+    var pend = parseJSON(c.pendientes, []) || [], cuota = cuotaHoy(), lote = pend.slice(0, Math.max(0, Math.min(cuota - 2, 400)));
+    var enviados = parseInt(c.enviados, 10) || 0, error = '';
+    for (var i = 0; i < lote.length; i += 40) {
+      var grupo = lote.slice(i, i + 40);
+      if (!correoComunicado(c, grupo)) { error = ultimoErrorCorreo; lote = lote.slice(0, i); break; }
+      enviados += grupo.length;
+    }
+    var resto = pend.slice(lote.length);
+    db.update('Comunicados', function (x) { return x.id === id; }, { enviados: String(enviados), pendientes: JSON.stringify(resto), estado: resto.length ? 'pendiente' : 'enviado' });
+    return { id: id, total: parseInt(c.total, 10) || 0, enviados: enviados, restantes: resto.length, cuota: cuotaHoy(), error: error };
+  }
+  A.comunicacionesInfo = function (p, ses) {
+    soloGestion(staffDe(ses));
+    var conteo = {}; Object.keys(PUBLICOS).forEach(function (k) { conteo[k] = destinatarios(k, {}).length; });
+    var porCiclo = {}; CICLOS.forEach(function (ci) { var n = destinatarios('apoderados', { ciclos: [ci] }).length; if (n) porCiclo[ci] = n; });
+    var fs = db.all('Fichas').filter(function (f) { return f.rut && f.estado !== 'retirado'; });
+    var bien = { total: fs.length, conCorreo: fs.filter(function (f) { return emailValido(f.apo_email); }).length, enviadas: fs.filter(function (f) { return str(f.bienvenidaEnviada).trim(); }).length };
+    bien.pendientes = fs.filter(function (f) { return emailValido(f.apo_email) && !str(f.bienvenidaEnviada).trim(); }).length;
+    bien.sinCorreo = bien.total - bien.conCorreo;
+    var info = {}; try { info = env.infoCorreo ? env.infoCorreo() : {}; } catch (e) { info = {}; }
+    var hist = db.all('Comunicados').map(function (x) { var o = limpiarFila(x); o.restantes = (parseJSON(x.pendientes, []) || []).length; delete o.pendientes; return o; })
+      .sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; }).slice(0, 60);
+    return { conteo: conteo, porCiclo: porCiclo, bienvenida: bien, cuota: cuotaHoy(), remitente: info.remitente || '', historial: hist, publicos: PUBLICOS };
+  };
+  A.enviarComunicado = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    if (!PUBLICOS[p.publico]) fail('Elija a quién enviar.');
+    var asunto = str(p.asunto).trim(), mensaje = str(p.mensaje).trim();
+    if (asunto.length < 3) fail('Escriba el título del correo.');
+    if (!mensaje && !p.imagenUrl) fail('Escriba el mensaje o agregue una imagen.');
+    var lista2 = destinatarios(p.publico, p.filtro);
+    if (!lista2.length) fail('No hay destinatarios con correo válido para este público.');
+    var c = { id: env.uuid(), fecha: env.now(), publico: p.publico, filtro: JSON.stringify(p.filtro || {}), asunto: asunto.slice(0, 150), mensaje: mensaje.slice(0, 8000),
+      imagenUrl: str(p.imagenUrl), autor: u.nombre, total: String(lista2.length), enviados: '0', estado: 'pendiente', pendientes: JSON.stringify(lista2) };
+    db.insert('Comunicados', c);
+    log(u.nombre, 'Comunicado a ' + PUBLICOS[p.publico], asunto + ' · ' + lista2.length + ' destinatarios');
+    return procesarComunicado(c.id);
+  };
+  A.continuarComunicado = function (p, ses) { soloGestion(staffDe(ses)); return procesarComunicado(p.id); };
+  A.previsualizarComunicado = function (p, ses) { // devuelve el HTML del correo para mostrarlo antes de enviar
+    soloGestion(staffDe(ses));
+    var html = null, envOrig = env.mail;
+    env.mail = function (to, asunto, h) { html = h; }; previsualizando = true;
+    try { correoComunicado({ asunto: str(p.asunto) || 'Título del correo', mensaje: str(p.mensaje), imagenUrl: str(p.imagenUrl) }, ['vista@previa.cl']); } finally { env.mail = envOrig; previsualizando = false; }
+    return { html: html };
+  };
+
+  /* Bienvenida a los apoderados: se envía UNA sola vez a cada ficha, con el usuario y la clave de ingreso. */
+  function correoBienvenida(f) {
+    var cfg = getConfig(), a = formalizacionDe(f), ap = fechaHora(cfg.fechaApertura), ci = fechaHora(cfg.fechaCierre);
+    var clave = f.claveHash ? 'La clave personal que usted creó' : claveNacimiento(f.est_fecha_nacimiento);
+    var paso = function (n, t) { return '<tr><td width="34" valign="top" style="padding:6px 0"><div style="width:26px;height:26px;line-height:26px;border-radius:50%;background:#e2c27d;color:#0a1f4d;font-weight:bold;text-align:center;font-size:13px">' + n + '</div></td><td style="padding:6px 0;color:#4a5872;font-size:14px;line-height:1.5">' + t + '</td></tr>'; };
+    return correoBase({ para: f.apo_email, asunto: 'Bienvenida al proceso de matrícula ' + cfg.anio, titulo: '¡Bienvenidos al proceso de matrícula ' + cfg.anio + '!',
+      intro: 'Estimada familia de <b>' + esc(nombreEstudiante(f)) + '</b>: ' + esc(cfg.mensajeBienvenida) + ' A continuación encontrará sus datos de acceso a la plataforma.',
+      tarjeta: '<div style="font-size:12px;color:#8a6a1f;letter-spacing:2px;font-weight:bold">&#128273; DATOS DE ACCESO · FAMILIAS</div>' +
+        dato('Usuario (RUT del estudiante)', rutFmt(f.rut)) + dato(f.claveHash ? 'Clave' : 'Clave inicial (fecha de nacimiento del estudiante, DDMMAAAA)', clave, !f.claveHash) +
+        dato('Nivel ' + cfg.anio, f.curso),
+      cuerpo: '<div style="font-weight:bold;color:#0a1f4d;font-size:15px;margin-bottom:6px">¿Cómo completar la ficha?</div><table role="presentation" cellpadding="0" cellspacing="0" width="100%">' +
+        paso(1, 'Ingrese a la plataforma y elija <b>Familias</b>.') + paso(2, 'Escriba el <b>RUT del estudiante</b> y la <b>clave</b> indicada arriba.') +
+        paso(3, 'Revise y complete los datos; se guardan automáticamente.') + paso(4, 'Lea los documentos del colegio y presione <b>Enviar matrícula</b>.') + '</table>' +
+        (ap || ci ? '<p style="color:#4a5872;font-size:14px;margin:14px 0 0">&#128467; Plazo para completar la ficha: ' + (ap ? 'desde el <b>' + esc(fechaLegible(ap)) + '</b>' : '') + (ci ? ' hasta el <b>' + esc(fechaLegible(ci)) + '</b>' : '') + '.</p>' : '') +
+        '<div style="height:14px"></div>' + avisoFormalizacionHtml(f),
+      textoBoton: 'Completar la ficha' });
+  }
+  A.enviarBienvenida = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    var cuota = cuotaHoy(), max = Math.max(0, Math.min(cuota - 2, 120)), enviados = 0, error = '';
+    var pend = db.all('Fichas').filter(function (f) { return f.rut && f.estado !== 'retirado' && emailValido(f.apo_email) && !str(f.bienvenidaEnviada).trim(); });
+    if (p.rut) pend = db.all('Fichas').filter(function (f) { return rutKey(f.rut) === rutKey(p.rut) && emailValido(f.apo_email); }); // reenvío individual
+    for (var i = 0; i < pend.length && enviados < max; i++) {
+      if (!correoBienvenida(pend[i])) { error = ultimoErrorCorreo; break; }
+      updFicha(pend[i].rut, { bienvenidaEnviada: env.now() });
+      enviados++;
+    }
+    log(u.nombre, 'Bienvenida a apoderados', enviados + ' enviadas');
+    return { enviados: enviados, restantes: p.rut ? 0 : pend.length - enviados, cuota: cuotaHoy(), error: error };
+  };
+  A.previsualizarBienvenida = function (p, ses) {
+    soloGestion(staffDe(ses));
+    var f = db.all('Fichas').filter(function (x) { return x.rut && emailValido(x.apo_email); })[0] || db.all('Fichas')[0];
+    if (!f) fail('No hay fichas cargadas.');
+    var html = null, envOrig = env.mail;
+    env.mail = function (to, asunto, h) { html = h; }; previsualizando = true;
+    try { correoBienvenida(Object.assign({}, f, { apo_email: f.apo_email || 'vista@previa.cl' })); } finally { env.mail = envOrig; previsualizando = false; }
+    return { html: html, ejemplo: nombreEstudiante(f) };
+  };
   /* ------------------------------ despacho ----------------------------- */
   function handle(action, payload, token) {
     try {
@@ -2192,6 +2316,8 @@ function crearBackendDemo() {
       remove: function (k) { delete sesiones[k]; }
     },
     mail: function (to, asunto, html, extra) {
+      if (extra && extra.imagenes) Object.keys(extra.imagenes).forEach(function (k) { html = html.split('cid:' + k).join(extra.imagenes[k]); });
+      if (extra && extra.bcc && extra.bcc.length) to = to + ' + ' + extra.bcc.length + ' en copia oculta';
       if (extra && extra.adjuntoNombre) html += '<div style="margin:10px;padding:10px 14px;border:1px dashed #b9c4dc;border-radius:10px;font-family:Arial;font-size:13px">📎 Adjunto: <b>' + extra.adjuntoNombre + '</b> (copia de la ficha en PDF)</div>';
       // En la demo no se envían correos: se muestra una vista previa (solo del primero si son varios seguidos).
       console.info('[DEMO] Correo simulado para', to, '·', asunto);
@@ -3120,7 +3246,7 @@ var Staff = (function () {
     P = S.perfil;
     S.form = await UI.api('formulario');
     var nav = [['fichas', '📋', 'Fichas de matrícula'], ['estadisticas', '📊', 'Resumen estadístico']];
-    var navG = [['solicitudes', '📨', 'Solicitudes'], ['portada', '🖼', 'Portada'], ['usuarios', '👥', 'Usuarios'], ['formulario', '🧩', 'Datos de la ficha'], ['documentos', '📚', 'Reglamentos y cartas'], ['config', '⚙️', 'Configuración'], ['bitacora', '🕘', 'Bitácora']];
+    var navG = [['solicitudes', '📨', 'Solicitudes'], ['comunicaciones', '📢', 'Comunicaciones'], ['portada', '🖼', 'Portada'], ['usuarios', '👥', 'Usuarios'], ['formulario', '🧩', 'Datos de la ficha'], ['documentos', '📚', 'Reglamentos y cartas'], ['config', '⚙️', 'Configuración'], ['bitacora', '🕘', 'Bitácora']];
     function item(n) { return '<button class="nav-item" data-nav="' + n[0] + '"><span class="ni">' + n[1] + '</span>' + n[2] + '</button>'; }
     UI.$('#app').innerHTML = App.topbar(P.nombre, P.rolNombre + (gestion() ? '' : ' · ' + (P.cursos.join(', ') || 'sin cursos asignados'))) +
       '<div class="layout"><nav class="sidebar">' + nav.map(item).join('') + (gestion() ? '<div class="nav-sep">Equipo de Gestión</div>' + navG.map(item).join('') : '') +
@@ -3148,6 +3274,7 @@ var Staff = (function () {
       else if (v === 'bitacora') await vBitacora();
       else if (v === 'solicitudes') await vSolicitudes();
       else if (v === 'portada') await vPortada();
+      else if (v === 'comunicaciones') await vComunicaciones(arg);
     } catch (e) {
       main().innerHTML = '<div class="empty"><div class="e-ico">⚠️</div><p>' + esc(e.userMsg || e.message) + '</p></div>';
     }
@@ -4233,6 +4360,122 @@ var Staff = (function () {
       UI.modal({ center: true, icon: 'error', title: 'No se pudo enviar', html: '<p class="muted">Motivo informado por Google:</p><p style="background:var(--bad-bg);color:#8a1f1f;border-radius:10px;padding:10px 12px;font-weight:700">' + esc(r.error || 'desconocido') + '</p>' + info +
         '<p class="small muted" style="text-align:left;margin-top:12px">Lo más común: faltan permisos. En Apps Script ejecute la función <b>probarCorreo</b>, acepte los permisos y vuelva a publicar con <b>Gestionar implementaciones ▸ Nueva versión</b>. Si dice que se superó la cuota, espere hasta mañana.</p>',
         buttons: [{ text: 'Entendido', cls: 'bad', value: true }] });
+    }
+  }
+
+  /* ============================== COMUNICACIONES ============================== */
+  var comTab = 'apoderados', comImagen = '';
+  function vistaCorreo(html, imagenUrl) {
+    return '<div style="border:1px solid #e6eaf2;border-radius:14px;overflow:hidden;max-height:64vh;overflow-y:auto">' +
+      String(html || '').replace(/cid:insignia/g, 'insignia.jpg').replace(/cid:aviso/g, esc(UI.imgSrc(imagenUrl || '', 1100))) + '</div>';
+  }
+  async function vComunicaciones(tabSel) {
+    var info = await UI.api('comunicacionesInfo');
+    comTab = tabSel || comTab;
+    var T = [['apoderados', '👨‍👩‍👧', 'Apoderados'], ['docentes', '🧑‍🏫', 'Docentes'], ['asistentes', '🤝', 'Asistentes'], ['gestion', '🧭', 'Equipo de Gestión'], ['bienvenida', '✉️', 'Bienvenida apoderados'], ['historial', '🕘', 'Historial']];
+    var publico = ['apoderados', 'docentes', 'asistentes', 'gestion'].indexOf(comTab) >= 0;
+    var pendHist = info.historial.filter(function (h) { return h.restantes > 0; }).length;
+    var h = '<div class="page-h"><div><div class="eyebrow">Equipo de Gestión</div><h2>Comunicaciones</h2></div><span class="grow"></span>' +
+      '<span class="badge ' + (info.cuota > 20 ? 'b-blue' : 'b-red') + '" title="Cuota diaria de Google">📧 ' + info.cuota + ' correos disponibles hoy</span></div>' +
+      '<div class="subtabs" id="com-tabs">' + T.map(function (t) {
+        var n = t[0] === 'bienvenida' ? info.bienvenida.pendientes : t[0] === 'historial' ? pendHist : info.conteo[t[0]];
+        return '<button class="subtab' + (t[0] === comTab ? ' active' : '') + '" data-ct="' + t[0] + '">' + t[1] + ' ' + t[2] + (n ? ' <span class="badge b-blue">' + n + '</span>' : '') + '</button>';
+      }).join('') + '</div>';
+    if (publico) {
+      var total = info.conteo[comTab];
+      h += '<section class="card"><div class="card-h"><div class="sec-num">📢</div><h3>Nuevo comunicado para ' + esc(info.publicos[comTab]) + '</h3><span class="grow"></span><span class="badge b-gold" id="com-n">' + total + ' destinatarios</span></div>' +
+        (comTab === 'apoderados' ? '<div class="field"><label>Enviar a los apoderados de</label><div class="row" id="com-ciclos">' +
+          Object.keys(info.porCiclo).map(function (ci) { return '<label class="chip-check"><input type="checkbox" value="' + esc(ci) + '" checked><span>' + esc(ci) + ' (' + info.porCiclo[ci] + ')</span></label>'; }).join('') + '</div>' +
+          '<label class="check" style="margin-top:10px"><input type="checkbox" id="com-sup"> <span>Incluir también al apoderado/a suplente</span></label></div>' : '') +
+        '<div class="field" style="margin-top:12px"><label>Título del correo</label><div class="row" style="flex-wrap:nowrap"><span class="badge b-red" style="white-space:nowrap">📢 IMPORTANTE:</span><input id="com-asunto" maxlength="150" placeholder="Ej.: Cambio de fecha de matrícula Primer Ciclo"></div>' +
+        '<small class="help">Todos los comunicados llegan marcados como información importante.</small></div>' +
+        '<div class="field" style="margin-top:12px"><label>Mensaje</label><textarea id="com-msg" rows="7" placeholder="Escriba aquí la información…"></textarea></div>' +
+        '<div class="field" style="margin-top:12px"><label>Imagen o afiche (opcional)</label><div class="row"><button class="btn sm ghost" id="com-img-btn">🖼 Agregar imagen</button><input type="file" id="com-img" accept="image/*" hidden>' +
+        '<span id="com-img-prev" class="small muted">Sin imagen</span></div><small class="help">Se muestra dentro del correo, debajo del mensaje (ideal para afiches con la información).</small></div>' +
+        '<div class="row" style="margin-top:16px"><span class="grow"></span><button class="btn ghost" id="com-ver">👁 Vista previa</button><button class="btn gold" id="com-enviar">📢 Enviar comunicado</button></div></section>';
+    } else if (comTab === 'bienvenida') {
+      var b = info.bienvenida;
+      h += '<section class="card"><div class="card-h"><div class="sec-num">✉️</div><h3>Correo de bienvenida a los apoderados</h3></div>' +
+        '<p class="muted" style="margin-top:-6px">Se envía <b>una sola vez</b> a cada apoderado/a, al correo registrado en la ficha. Incluye la bienvenida, cómo completar la ficha, los plazos, la fecha de formalización de su ciclo y sus <b>datos de ingreso</b> (usuario: RUT del estudiante; clave inicial: fecha de nacimiento).</p>' +
+        '<div class="kpis" style="grid-template-columns:repeat(4,minmax(0,1fr));margin:16px 0"><div class="kpi k1"><div class="v">' + b.total + '</div><div class="l">Fichas vigentes</div></div><div class="kpi k2"><div class="v">' + b.enviadas + '</div><div class="l">Bienvenida ya enviada</div></div>' +
+        '<div class="kpi k4"><div class="v">' + b.pendientes + '</div><div class="l">Pendientes con correo</div></div><div class="kpi k3"><div class="v">' + b.sinCorreo + '</div><div class="l">Sin correo registrado</div></div></div>' +
+        '<div class="row"><button class="btn ghost" id="bv-ver">👁 Ver el correo que recibirán</button><span class="grow"></span>' +
+        (b.pendientes ? '<button class="btn gold" id="bv-enviar">✉️ Enviar bienvenida a ' + b.pendientes + ' apoderados</button>' : '<span class="badge b-matriculada">✓ Todas las bienvenidas fueron enviadas</span>') + '</div>' +
+        (b.sinCorreo ? '<p class="small muted" style="margin-top:12px">⚠️ ' + b.sinCorreo + ' fichas no tienen correo de apoderado/a: puede completarlos en cada ficha o con «📥 Cargar / actualizar base».</p>' : '') + '</section>';
+    } else {
+      h += '<section class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table class="t"><thead><tr><th>Fecha</th><th>Para</th><th>Título</th><th>Enviados</th><th>Estado</th><th></th></tr></thead><tbody>' +
+        (info.historial.length ? info.historial.map(function (x) {
+          return '<tr><td class="small nowrap">' + esc(x.fecha) + '</td><td>' + esc(info.publicos[x.publico] || x.publico) + '</td><td><b>' + esc(x.asunto) + '</b><div class="small muted">' + esc(x.autor) + '</div></td>' +
+            '<td>' + esc(x.enviados) + ' / ' + esc(x.total) + '</td><td>' + (x.restantes ? '<span class="badge b-gold">Faltan ' + x.restantes + '</span>' : '<span class="badge b-matriculada">Enviado</span>') + '</td>' +
+            '<td>' + (x.restantes ? '<button class="btn sm gold" data-cont="' + esc(x.id) + '">▶ Continuar envío</button>' : '') + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:30px">Aún no se han enviado comunicados.</td></tr>') + '</tbody></table></div></section>';
+    }
+    h += '<p class="small muted" style="margin-top:14px">ℹ️ Google limita los correos diarios (cuenta gratuita ≈ 100 destinatarios; Google Workspace ≈ 1.500). Si un envío supera el límite, se envía por partes: al día siguiente presione «▶ Continuar envío» en Historial.' +
+      (info.remitente ? ' Los correos salen desde <b>' + esc(info.remitente) + '</b>.' : '') + '</p>';
+    main().innerHTML = h;
+    UI.$('#com-tabs').onclick = function (e) { var t = e.target.closest('[data-ct]'); if (t) { comImagen = ''; vComunicaciones(t.dataset.ct); } };
+    function resultado(r, que) {
+      var falt = r.restantes > 0;
+      return UI.modal({ center: true, icon: r.error ? 'error' : falt ? 'warning' : 'success', title: r.error ? 'Envío interrumpido' : falt ? 'Envío parcial' : '¡' + que + ' enviado!',
+        html: '<p class="muted" style="font-size:15px">Se enviaron <b>' + r.enviados + '</b> correos' + (falt ? ' y faltan <b>' + r.restantes + '</b>.' : '.') + '</p>' +
+          (r.error ? '<p style="background:var(--bad-bg);color:#8a1f1f;border-radius:10px;padding:10px 12px;font-weight:700">' + esc(r.error) + '</p>' : '') +
+          (falt ? '<p class="small muted">Se alcanzó el límite diario de Google. Mañana entre a <b>Comunicaciones</b> y presione «▶ Continuar envío» (o «Enviar bienvenida» para las que faltan).</p>' : ''),
+        buttons: [{ text: 'Entendido', value: true }] });
+    }
+    if (publico) {
+      var filtro = function () {
+        if (comTab !== 'apoderados') return {};
+        return { ciclos: UI.$$('#com-ciclos input:checked').map(function (x) { return x.value; }), suplentes: UI.$('#com-sup').checked };
+      };
+      if (comTab === 'apoderados') main().querySelector('#com-ciclos').onchange = function () {
+        var n = UI.$$('#com-ciclos input:checked').reduce(function (a, x) { return a + (info.porCiclo[x.value] || 0); }, 0);
+        UI.$('#com-n').textContent = n + ' destinatarios' + (UI.$('#com-sup').checked ? ' + suplentes' : '');
+      };
+      UI.$('#com-img-btn').onclick = function () { UI.$('#com-img').click(); };
+      UI.$('#com-img').onchange = async function () {
+        var file = this.files[0]; if (!file) return;
+        UI.loading('Subiendo imagen…');
+        try {
+          var b64 = await UI.comprimirImagen(file, 1200);
+          var r = await UI.api('subirImagenPortada', { archivo: { nombre: 'comunicado.jpg', mime: 'image/jpeg', base64: b64 } });
+          comImagen = r.url;
+          UI.$('#com-img-prev').innerHTML = '<img src="' + esc(UI.imgSrc(comImagen, 300)) + '" style="height:60px;border-radius:8px;vertical-align:middle"> <a href="#" id="com-img-x">Quitar</a>';
+          UI.$('#com-img-x').onclick = function (e) { e.preventDefault(); comImagen = ''; UI.$('#com-img-prev').textContent = 'Sin imagen'; };
+        } catch (er) { UI.toast(er.userMsg || er.message, 'bad'); }
+        UI.done(); this.value = '';
+      };
+      UI.$('#com-ver').onclick = async function () {
+        var r = await UI.intentar(function () { return UI.api('previsualizarComunicado', { asunto: UI.$('#com-asunto').value, mensaje: UI.$('#com-msg').value, imagenUrl: comImagen }); }, 'Preparando vista previa…');
+        if (r) UI.modal({ title: '👁 Así se verá el correo', size: 'wide', html: '<div class="small muted" style="margin:-6px 0 10px"><b>Asunto:</b> 📢 IMPORTANTE: ' + esc(UI.$('#com-asunto').value) + '</div>' + vistaCorreo(r.html, comImagen), buttons: [{ text: 'Cerrar', cls: 'ghost', value: true }] });
+      };
+      UI.$('#com-enviar').onclick = async function () {
+        var asunto = UI.$('#com-asunto').value.trim(), msg = UI.$('#com-msg').value.trim();
+        if (asunto.length < 3) { UI.toast('Escriba el título del correo', 'bad'); UI.$('#com-asunto').focus(); return; }
+        if (!msg && !comImagen) { UI.toast('Escriba el mensaje o agregue una imagen', 'bad'); return; }
+        var n = UI.$('#com-n').textContent;
+        if (!await UI.confirm('¿Enviar el comunicado?', 'Se enviará <b>«📢 IMPORTANTE: ' + esc(asunto) + '»</b> a <b>' + esc(info.publicos[comTab]) + '</b> (' + esc(n) + ').<br>Correos disponibles hoy: <b>' + info.cuota + '</b>.', '📢 Enviar', 'gold')) return;
+        var r = await UI.intentar(function () { return UI.api('enviarComunicado', { publico: comTab, filtro: filtro(), asunto: asunto, mensaje: msg, imagenUrl: comImagen }); }, 'Enviando comunicado…');
+        if (!r) return;
+        await resultado(r, 'Comunicado'); comImagen = ''; vComunicaciones(r.restantes ? 'historial' : comTab);
+      };
+    } else if (comTab === 'bienvenida') {
+      UI.$('#bv-ver').onclick = async function () {
+        var r = await UI.intentar(function () { return UI.api('previsualizarBienvenida'); }, 'Preparando vista previa…');
+        if (r) UI.modal({ title: '👁 Correo de bienvenida (ejemplo: ' + esc(r.ejemplo) + ')', size: 'wide', html: vistaCorreo(r.html), buttons: [{ text: 'Cerrar', cls: 'ghost', value: true }] });
+      };
+      var bv = UI.$('#bv-enviar');
+      if (bv) bv.onclick = async function () {
+        if (!await UI.confirm('¿Enviar la bienvenida?', 'Se enviará a <b>' + info.bienvenida.pendientes + '</b> apoderados que aún no la reciben (una sola vez por ficha). Correos disponibles hoy: <b>' + info.cuota + '</b>.', '✉️ Enviar', 'gold')) return;
+        var r = await UI.intentar(function () { return UI.api('enviarBienvenida', {}); }, 'Enviando bienvenidas… (puede tardar unos minutos)');
+        if (!r) return;
+        await resultado(r, 'Bienvenida'); vComunicaciones('bienvenida');
+      };
+    } else {
+      main().onclick = async function (e) {
+        var b = e.target.closest('[data-cont]'); if (!b) return;
+        var r = await UI.intentar(function () { return UI.api('continuarComunicado', { id: b.dataset.cont }); }, 'Continuando envío…');
+        if (r) { await resultado(r, 'Comunicado'); vComunicaciones('historial'); }
+      };
     }
   }
 
