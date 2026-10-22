@@ -4,7 +4,7 @@
    Los estudiantes de ejemplo son ficticios.
    ===================================================================== */
 function crearBackendDemo() {
-  var KEY = 'fichas_demo_db_v2', SKEY = 'fichas_demo_ses_v2';
+  var KEY = 'fichas_demo_db_v3', SKEY = 'fichas_demo_ses_v3';
   var data = {}, sesiones = {};
   try { data = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { data = {}; }
   try { sesiones = JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { sesiones = {}; }
@@ -40,9 +40,20 @@ function crearBackendDemo() {
       get: function (k) { return sesiones[k] || null; },
       remove: function (k) { delete sesiones[k]; }
     },
-    mail: function (to, asunto) {
+    mail: function (to, asunto, html) {
+      // En la demo no se envían correos: se muestra una vista previa (solo del primero si son varios seguidos).
       console.info('[DEMO] Correo simulado para', to, '·', asunto);
-      if (window.UI && UI.toast) UI.toast('📧 (Demo) Correo simulado enviado a ' + to, 'info');
+      if (!window.UI || !UI.modal) return;
+      var ahora = Date.now();
+      if (ahora - (window.__ultimaVistaCorreo || 0) < 4000) { UI.toast('📧 (Demo) Correo simulado para ' + to, 'info'); return; }
+      window.__ultimaVistaCorreo = ahora;
+      var cuerpo = html.replace(/cid:insignia/g, 'assets/insignia.jpg');
+      setTimeout(function () {
+        UI.modal({ title: '📧 Vista previa del correo (modo demostración)', size: 'wide',
+          html: '<div class="small muted" style="margin:-6px 0 10px"><b>Para:</b> ' + UI.esc(to) + ' · <b>Asunto:</b> ' + UI.esc(asunto) + '</div>' +
+            '<div style="border:1px solid #e6eaf2;border-radius:14px;overflow:hidden;max-height:62vh;overflow-y:auto">' + cuerpo + '</div>',
+          buttons: [{ text: 'Cerrar', cls: 'ghost', value: true }] });
+      }, 700);
     },
     saveFile: function (nombre, mime, b64) {
       if (b64.length > 3000000) throw Object.assign(new Error('x'), { userMsg: 'En modo demostración el archivo debe pesar menos de 2 MB.' });
@@ -53,9 +64,9 @@ function crearBackendDemo() {
   var core = createCore(env);
 
   if (!tabla('Campos').length) {
-    core.setup({ adminNombre: 'Equipo Gestión Demo', adminRut: '11.111.111-1', adminEmail: 'gestion.demo@colegio.cl' });
-    env.db.insert('Usuarios', { id: 'doc1', nombre: 'Docente Demo', rut: '22222222-2', email: 'docente.demo@colegio.cl', rol: 'docente', cursos: '1° Básico A', fichas: '', claveHash: '', debeCambiarClave: 'NO', activo: 'SI', videoVisto: 'NO', creado: env.now() });
-    env.db.insert('Usuarios', { id: 'asi1', nombre: 'Asistente Demo', rut: '33333333-3', email: 'asistente.demo@colegio.cl', rol: 'asistente', cursos: 'Kinder A', fichas: '', claveHash: '', debeCambiarClave: 'NO', activo: 'SI', videoVisto: 'NO', creado: env.now() });
+    core.setup({ adminNombre: 'Equipo Gestión Demo', adminRut: '11.111.111-1', adminEmail: 'gestion.demo@colegio.cl', adminClave: 'demo1234' });
+    env.db.insert('Usuarios', { id: 'doc1', nombre: 'Docente Demo', rut: '22222222-2', email: 'docente.demo@colegio.cl', rol: 'docente', cursos: '1° Básico A', fichas: '', claveHash: env.hash('demo1234'), debeCambiarClave: 'NO', activo: 'SI', videoVisto: 'NO', creado: env.now() });
+    env.db.insert('Usuarios', { id: 'asi1', nombre: 'Asistente Demo', rut: '33333333-3', email: 'asistente.demo@colegio.cl', rol: 'asistente', cursos: 'Kinder A', fichas: '', claveHash: env.hash('demo1234'), debeCambiarClave: 'NO', activo: 'SI', videoVisto: 'NO', creado: env.now() });
     var nombres = [['SOFÍA ANTONIA', 'F'], ['MATEO IGNACIO', 'M'], ['ISIDORA BELÉN', 'F'], ['BENJAMÍN TOMÁS', 'M'], ['AGUSTINA PAZ', 'F'], ['VICENTE ANDRÉS', 'M'], ['EMILIA JAVIERA', 'F'], ['LUCAS MARTÍN', 'M'], ['FLORENCIA AMANDA', 'F'], ['JOAQUÍN ELÍAS', 'M'], ['MAITE CONSTANZA', 'F'], ['TOMÁS ALONSO', 'M'], ['RENATA ISABEL', 'F'], ['GASPAR NICOLÁS', 'M']];
     var apellidos = ['SOTO', 'MUÑOZ', 'ROJAS', 'DÍAZ', 'PÉREZ', 'CONTRERAS', 'SILVA', 'MARTÍNEZ', 'SEPÚLVEDA', 'MORALES', 'FUENTES', 'VALENZUELA', 'ARAYA', 'CASTILLO'];
     var cursos = ['Kinder A', 'Kinder A', '1° Básico A', '1° Básico A', '1° Básico A', '1° Básico B', '3° Básico A', '5° Básico A', '5° Básico B', '6° Básico A', '7° Básico A', '8° Básico B', 'PreKinder A', '1° Básico A'];

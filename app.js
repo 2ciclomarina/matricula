@@ -40,7 +40,7 @@ var App = (function () {
       '</section><section class="login-side" id="lg-side"><div class="login-box">' +
       (S.publico.error ? '<div class="demo-banner" style="background:var(--bad-bg);border-color:#f3c4c4;color:var(--bad)">⚠️ ' + esc(S.publico.error) + '</div>' : '') +
       (S.demo ? '<div class="demo-banner">🧪 <b>Modo demostración</b> (los datos quedan solo en este navegador).<br>Familia: RUT <code data-fill="f">' + esc(demo && demo.rut) + '</code> clave <code data-fill="f">' + esc(demo && demo.clave) + '</code><br>' +
-        'Gestión: <code data-fill="g">Equipo Gestión Demo</code> clave <code>11111111-1</code> · Docente: <code data-fill="d">Docente Demo</code> clave <code>22222222-2</code> · Asistente: <code data-fill="a">Asistente Demo</code> clave <code>33333333-3</code> · <a href="#" id="demo-reset">Reiniciar demo</a></div>' : '') +
+        'Funcionarios (clave <code>demo1234</code>): <code data-fill="g">gestion.demo@colegio.cl</code> · <code data-fill="d">docente.demo@colegio.cl</code> · <code data-fill="a">asistente.demo@colegio.cl</code> · <a href="#" id="demo-reset">Reiniciar demo</a></div>' : '') +
       '<div class="card" style="margin-top:46px"><div class="crest-float"><img src="assets/insignia.jpg" alt=""></div><h2>Ingresar</h2><p class="muted" style="margin:-4px 0 16px">Seleccione su tipo de acceso.</p>' +
       '<div class="tabs" role="tablist"><button class="tab" data-t="familia">👨‍👩‍👧 Familias</button><button class="tab" data-t="staff">🧑‍🏫 Funcionarios</button></div>' +
       '<div id="lg-familia">' +
@@ -49,9 +49,9 @@ var App = (function () {
       '<div class="hint">🔑 La clave inicial es la <b>fecha de nacimiento del estudiante</b> en formato <b>DDMMAAAA</b> (ej.: 15 de marzo de 2019 → <b>15032019</b>). Si la cambió, use su clave nueva.</div>' +
       '<button class="btn dark lg" type="submit">Ingresar</button><p class="small muted" style="margin:0;text-align:center">¿Olvidó su clave? Comuníquese con el establecimiento para restablecerla.</p></form></div>' +
       '<div class="hidden" id="lg-staff">' +
-      '<form id="fs" class="stack"><div class="field"><label for="fs-us">Usuario (nombre completo)</label><input id="fs-us" placeholder="Nombre Apellido" required autocomplete="username"></div>' +
-      '<div class="field"><label for="fs-cl">Clave</label><input id="fs-cl" type="password" placeholder="Su RUT o su clave personal" required autocomplete="current-password"></div>' +
-      '<div class="hint">🔑 La clave inicial es su <b>RUT</b> (con o sin puntos y guion).</div>' +
+      '<form id="fs" class="stack"><div class="field"><label for="fs-us">Usuario (correo institucional)</label><input id="fs-us" type="email" inputmode="email" placeholder="nombre@colegio.cl" required autocomplete="username"></div>' +
+      '<div class="field"><label for="fs-cl">Clave</label><input id="fs-cl" type="password" placeholder="Clave recibida por correo o su clave personal" required autocomplete="current-password"></div>' +
+      '<div class="hint">📧 La clave inicial le llegó a su <b>correo institucional</b> al crearse su cuenta. Respete mayúsculas y minúsculas.</div>' +
       '<button class="btn dark lg" type="submit">Ingresar</button><a href="#" id="fs-olv" class="small" style="text-align:center">¿Olvidó su clave?</a></form></div>' +
       '</div><div class="login-foot">Sus datos se guardan de forma segura y solo son vistos por el establecimiento.</div></div></section></div></div></div>';
     function verTab(t) {
@@ -80,7 +80,7 @@ var App = (function () {
         var c = e.target.closest('[data-fill]');
         if (c && c.dataset.fill === 'f') { verTab('familia'); UI.$('#ff-rut').value = demo.rut; UI.$('#ff-cl').value = demo.clave; }
         else if (c) {
-          var m = { g: ['Equipo Gestión Demo', '11111111-1'], d: ['Docente Demo', '22222222-2'], a: ['Asistente Demo', '33333333-3'] }[c.dataset.fill];
+          var m = { g: ['gestion.demo@colegio.cl', 'demo1234'], d: ['docente.demo@colegio.cl', 'demo1234'], a: ['asistente.demo@colegio.cl', 'demo1234'] }[c.dataset.fill];
           verTab('staff'); UI.$('#fs-us').value = m[0]; UI.$('#fs-cl').value = m[1];
         }
       };
@@ -91,11 +91,11 @@ var App = (function () {
   function recuperar() {
     UI.modal({
       title: '🔑 Recuperar clave de funcionario',
-      html: '<p class="muted" style="margin-top:0">Ingrese su usuario y el correo registrado. Recibirá una <b>clave temporal</b> por correo. También puede pedir al Equipo de Gestión que restablezca su clave.</p>' +
-        '<div class="stack"><div class="field"><label>Usuario (nombre completo)</label><input id="rc-us"></div><div class="field"><label>Correo registrado</label><input id="rc-em" type="email"></div></div>',
+      html: '<p class="muted" style="margin-top:0">Escriba su <b>correo institucional</b>. Le enviaremos una <b>clave temporal</b> y, al ingresar, el sistema le pedirá crear una nueva. También puede pedir al Equipo de Gestión que restablezca su clave.</p>' +
+        '<div class="field"><label>Correo institucional</label><input id="rc-em" type="email" placeholder="nombre@colegio.cl" value="' + esc((UI.$('#fs-us') || {}).value || '') + '"></div>',
       buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, {
-        text: 'Enviar clave temporal', onClick: async function (el) {
-          try { return await UI.api('recuperarClave', { usuario: el.querySelector('#rc-us').value, email: el.querySelector('#rc-em').value }); }
+        text: '📧 Enviar clave temporal', onClick: async function (el) {
+          try { return await UI.api('recuperarClave', { email: el.querySelector('#rc-em').value }); }
           catch (e) { UI.toast(e.userMsg || e.message, 'bad'); return false; }
         }
       }]
@@ -195,7 +195,7 @@ var App = (function () {
     return UI.modal({
       title: '🔑 ' + (forzado ? 'Debe crear una clave nueva' : 'Cambiar mi clave'), dismissable: !forzado,
       html: (forzado ? '<div class="hint" style="background:var(--warn-bg);border-left:4px solid var(--warn);padding:10px 12px;border-radius:8px;margin-bottom:14px">El establecimiento solicitó que cree una clave nueva para continuar.</div>' : '') +
-        '<div class="stack"><div class="field"><label>Clave actual</label><input id="ck-a" type="password" placeholder="' + (fam ? 'Fecha de nacimiento (DDMMAAAA) o su clave' : 'Su RUT o su clave actual') + '"></div>' +
+        '<div class="stack"><div class="field"><label>Clave actual</label><input id="ck-a" type="password" placeholder="' + (fam ? 'Fecha de nacimiento (DDMMAAAA) o su clave' : 'La clave que recibió por correo o su clave actual') + '"></div>' +
         '<div class="field"><label>Clave nueva (mínimo 6 caracteres)</label><input id="ck-n" type="password" autocomplete="new-password"></div>' +
         '<div class="field"><label>Repita la clave nueva</label><input id="ck-r" type="password" autocomplete="new-password"></div></div>',
       buttons: (forzado ? [] : [{ text: 'Cancelar', cls: 'ghost', value: null }]).concat([{

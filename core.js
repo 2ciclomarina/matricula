@@ -277,19 +277,62 @@ function createCore(env) {
   }
 
   /* ------------------------------ correos ----------------------------- */
-  function correoCuenta(u, claveTxt, titulo, intro) {
+  // Correo con diseño institucional (tablas y estilos en línea para que se vea bien en Gmail, Outlook y celulares).
+  // tipo: 'bienvenida' | 'restablecida' | 'temporal'
+  function correoCuenta(u, clave, tipo) {
     if (!emailValido(u.email)) return false;
-    var cfg = getConfig();
-    var link = cfg.urlPlataforma ? '<p style="text-align:center;margin:24px 0"><a href="' + esc(cfg.urlPlataforma) + '" style="background:#1f5fbf;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Ingresar a la plataforma</a></p>' : '';
-    var html = '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;border:1px solid #dbe4f3;border-radius:12px;overflow:hidden">' +
-      '<div style="background:#12347a;color:#fff;padding:18px 24px"><h2 style="margin:0">' + esc(cfg.nombreColegio) + '</h2><div style="opacity:.85">Plataforma de Fichas de Matrícula ' + esc(cfg.anio) + '</div></div>' +
-      '<div style="padding:24px;color:#1b2a41;line-height:1.5"><p>Estimado/a <b>' + esc(u.nombre) + '</b>:</p><p>' + intro + '</p>' +
-      '<table style="background:#f4f7fc;border-radius:8px;padding:14px;width:100%"><tr><td><b>Usuario:</b></td><td>' + esc(u.nombre) + '</td></tr>' +
-      '<tr><td><b>Clave:</b></td><td>' + esc(claveTxt) + '</td></tr><tr><td><b>Perfil:</b></td><td>' + esc(ROLES[u.rol] || u.rol) + '</td></tr></table>' +
-      link + '<p style="font-size:13px;color:#5b6b85">Le recomendamos cambiar su clave al ingresar (menú «Mi cuenta»). Este es un mensaje automático, no responda a este correo.</p></div></div>';
-    try { env.mail(u.email, titulo + ' – ' + cfg.nombreColegio, html); return true; } catch (e) { return false; }
+    var cfg = getConfig(), primerNombre = str(u.nombre).split(' ')[0];
+    var T = {
+      bienvenida: { asunto: 'Su cuenta en la plataforma de matrícula', titulo: '¡Bienvenido/a, ' + primerNombre + '!',
+        intro: 'Se ha creado su cuenta en la <b>Plataforma de Fichas de Matrícula ' + esc(cfg.anio) + '</b> del ' + esc(cfg.nombreColegio) + '. Con ella podrá revisar, completar y registrar las matrículas de los estudiantes asignados a su perfil.' },
+      restablecida: { asunto: 'Su clave fue restablecida', titulo: 'Nueva clave de acceso',
+        intro: 'Hola ' + esc(primerNombre) + ', el Equipo de Gestión restableció su clave de acceso a la <b>Plataforma de Fichas de Matrícula</b>. Use los siguientes datos para ingresar.' },
+      temporal: { asunto: 'Clave temporal de acceso', titulo: 'Recuperación de clave',
+        intro: 'Hola ' + esc(primerNombre) + ', recibimos una solicitud para recuperar su acceso a la <b>Plataforma de Fichas de Matrícula</b>. Si no fue usted, avise al Equipo de Gestión.' }
+    }[tipo || 'bienvenida'];
+    var url = str(cfg.urlPlataforma).trim();
+    var boton = url ? '<tr><td align="center" style="padding:6px 32px 26px"><a href="' + esc(url) + '" style="display:inline-block;background:#0a1f4d;color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:15px 34px;border-radius:999px">Ingresar a la plataforma &rarr;</a>' +
+      '<div style="font-size:12px;color:#8a94a8;margin-top:10px">' + esc(url) + '</div></td></tr>' : '';
+    var paso = function (n, txt) {
+      return '<tr><td width="34" valign="top" style="padding:6px 0"><div style="width:26px;height:26px;line-height:26px;border-radius:50%;background:#e2c27d;color:#0a1f4d;font-weight:bold;text-align:center;font-size:13px">' + n + '</div></td>' +
+        '<td style="padding:6px 0;color:#4a5872;font-size:14px;line-height:1.5">' + txt + '</td></tr>';
+    };
+    var html =
+      '<div style="background:#f3f5fa;padding:28px 10px;font-family:Arial,Helvetica,sans-serif">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e6eaf2">' +
+      // encabezado con insignia
+      '<tr><td align="center" style="background:#0a1f4d;padding:30px 28px 24px">' +
+      '<img src="cid:insignia" width="70" height="78" alt="Insignia" style="display:block;background:#ffffff;border-radius:16px;padding:6px;margin:0 auto">' +
+      '<div style="color:#e2c27d;font-size:12px;letter-spacing:3px;font-weight:bold;margin-top:16px;text-transform:uppercase">Admisión y matrículas ' + esc(cfg.anio) + '</div>' +
+      '<div style="color:#ffffff;font-family:Georgia,\'Times New Roman\',serif;font-size:28px;margin-top:6px">' + esc(cfg.nombreColegio) + '</div>' +
+      '<div style="color:#b9c4dc;font-size:13px;margin-top:4px">' + esc(cfg.ciudad || '') + '</div></td></tr>' +
+      '<tr><td style="height:6px;background:#e2c27d;font-size:0;line-height:0">&nbsp;</td></tr>' +
+      // saludo
+      '<tr><td style="padding:30px 32px 6px"><div style="font-family:Georgia,\'Times New Roman\',serif;color:#0a1f4d;font-size:25px;font-weight:bold">' + esc(T.titulo) + '</div>' +
+      '<p style="color:#4a5872;font-size:15px;line-height:1.65;margin:12px 0 0">' + T.intro + '</p></td></tr>' +
+      // tarjeta de acceso
+      '<tr><td style="padding:20px 32px">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fbf7ec;border:2px dashed #e2c27d;border-radius:16px"><tr><td style="padding:22px 24px">' +
+      '<div style="font-size:12px;color:#8a6a1f;letter-spacing:2px;font-weight:bold;text-transform:uppercase">&#128273; Sus datos de acceso</div>' +
+      '<div style="font-size:12px;color:#8a94a8;margin-top:16px;text-transform:uppercase;letter-spacing:1px">Usuario (correo institucional)</div>' +
+      '<div style="font-size:18px;color:#0a1f4d;font-weight:bold;margin-top:4px;word-break:break-all">' + esc(u.email) + '</div>' +
+      '<div style="font-size:12px;color:#8a94a8;margin-top:16px;text-transform:uppercase;letter-spacing:1px">Clave</div>' +
+      '<div style="margin-top:6px"><span style="display:inline-block;font-family:\'Courier New\',Courier,monospace;font-size:26px;letter-spacing:4px;font-weight:bold;background:#0a1f4d;color:#ffffff;padding:10px 20px;border-radius:12px">' + esc(clave) + '</span></div>' +
+      '<div style="font-size:12px;color:#8a94a8;margin-top:16px;text-transform:uppercase;letter-spacing:1px">Perfil</div>' +
+      '<div style="font-size:15px;color:#0a1f4d;font-weight:bold;margin-top:4px">' + esc(ROLES[u.rol] || u.rol) + (u.rol !== 'gestion' && lista(u.cursos).length ? ' · ' + esc(lista(u.cursos).join(', ')) : '') + '</div>' +
+      '</td></tr></table></td></tr>' + boton +
+      // pasos
+      '<tr><td style="padding:0 32px 22px"><div style="font-weight:bold;color:#0a1f4d;font-size:15px;margin-bottom:6px">¿Cómo ingresar?</div><table role="presentation" cellpadding="0" cellspacing="0" width="100%">' +
+      paso(1, 'Abra la plataforma y elija la pestaña <b>Funcionarios</b>.') +
+      paso(2, 'Escriba su <b>correo institucional</b> y la <b>clave</b> de este mensaje (respete mayúsculas y minúsculas).') +
+      paso(3, 'El sistema le pedirá crear una <b>clave personal</b>. Guárdela en un lugar seguro.') +
+      '</table></td></tr>' +
+      '<tr><td style="background:#f7f8fb;padding:18px 32px;color:#8a94a8;font-size:12px;line-height:1.5;text-align:center">Este es un mensaje automático de la Plataforma de Fichas de Matrícula del ' + esc(cfg.nombreColegio) + '. No responda a este correo.' +
+      (cfg.telefono || cfg.email ? '<br>Consultas: ' + esc([cfg.telefono, cfg.email].filter(Boolean).join(' · ')) : '') + '</td></tr>' +
+      '</table></div>';
+    var logo = url ? url.replace(/\/?$/, '/') + 'assets/insignia.jpg' : '';
+    try { env.mail(u.email, T.asunto + ' – ' + cfg.nombreColegio, html, { logoUrl: logo }); return true; } catch (e) { return false; }
   }
-
   /* --------------------------- datos iniciales -------------------------- */
   function campoDef(orden, id, seccion, etiqueta, tipo, opciones, obligatorio, familia, ayuda, sistema) {
     return { id: id, seccion: seccion, etiqueta: etiqueta, tipo: tipo, opciones: opciones || '', obligatorio: siNo(obligatorio),
@@ -370,11 +413,15 @@ function createCore(env) {
     cfgRows.forEach(function (r) { existentes[r.clave] = 1; });
     for (var k in CONFIG_DEF) if (!existentes[k]) db.insert('Config', { clave: k, valor: CONFIG_DEF[k] });
     var hayGestion = db.all('Usuarios').some(function (u) { return u.rol === 'gestion' && si(u.activo); });
-    if (!hayGestion && opts.adminNombre && opts.adminRut) {
-      db.insert('Usuarios', { id: env.uuid(), nombre: opts.adminNombre, rut: rutFmt(opts.adminRut), email: opts.adminEmail || '', rol: 'gestion',
-        cursos: '', fichas: '', claveHash: '', debeCambiarClave: 'NO', activo: 'SI', videoVisto: 'NO', creado: env.now(), ultimoAcceso: '' });
+    var res = { admin: null };
+    if (!hayGestion && opts.adminNombre && opts.adminRut && opts.adminEmail) {
+      var clave = opts.adminClave || claveTemporal();
+      var adm = { id: env.uuid(), nombre: opts.adminNombre, rut: rutFmt(opts.adminRut), email: str(opts.adminEmail).trim().toLowerCase(), rol: 'gestion',
+        cursos: '', fichas: '', claveHash: env.hash(clave), debeCambiarClave: siNo(!opts.adminClave), activo: 'SI', videoVisto: 'NO', creado: env.now(), ultimoAcceso: '' };
+      db.insert('Usuarios', adm);
+      res.admin = { usuario: adm.email, clave: clave, correoEnviado: opts.adminClave ? false : correoCuenta(adm, clave, 'bienvenida') };
     }
-    return 'ok';
+    return res;
   }
 
   /* Importa filas con el formato del Excel "Registro Estudiantes" (encabezados en la fila 0). */
@@ -525,13 +572,13 @@ function createCore(env) {
 
   A.loginFuncionario = function (p) {
     var n = norm(p.usuario);
-    if (!n) fail('Ingrese su nombre de usuario.');
-    if (intentos('s' + n) >= 8) fail('Demasiados intentos fallidos. Espere 15 minutos o solicite restablecer su clave.');
+    if (!n) fail('Ingrese su correo institucional.');
+    if (intentos('s' + n) >= 8) fail('Demasiados intentos fallidos. Espere 15 minutos o use «¿Olvidó su clave?».');
     var u = null;
-    db.all('Usuarios').forEach(function (x) { if (si(x.activo) && (norm(x.nombre) === n || (x.email && norm(x.email) === n))) u = x; });
+    db.all('Usuarios').forEach(function (x) { if (si(x.activo) && x.email && norm(x.email) === n) u = x; });
     var ok = false;
-    if (u) ok = u.claveHash ? env.hash(str(p.clave)) === u.claveHash : rutKey(p.clave) === rutKey(u.rut);
-    if (!ok) { intentos('s' + n, true); fail('Usuario o clave incorrectos. Su usuario es su nombre completo y la clave inicial es su RUT.'); }
+    if (u) ok = u.claveHash ? env.hash(str(p.clave).trim()) === u.claveHash : rutKey(p.clave) === rutKey(u.rut);
+    if (!ok) { intentos('s' + n, true); fail('Correo o clave incorrectos. Use su correo institucional y la clave que recibió por correo (respete mayúsculas y minúsculas).'); }
     updUser(u.id, { ultimoAcceso: env.now() });
     var token = nuevaSesion({ tipo: 'staff', id: u.id });
     log(u.nombre, 'Ingreso', ROLES[u.rol]);
@@ -546,7 +593,7 @@ function createCore(env) {
   A.logout = function (p, ses, token) { env.session.remove(token); return true; };
 
   A.cambiarClave = function (p, ses) {
-    var nueva = str(p.nueva);
+    var nueva = str(p.nueva).trim();
     if (nueva.length < 6) fail('La nueva clave debe tener al menos 6 caracteres.');
     if (ses.tipo === 'familia') {
       var f = familiaDe(ses);
@@ -556,7 +603,7 @@ function createCore(env) {
       log('Familia ' + rutFmt(f.rut), 'Cambio de clave', '');
     } else {
       var u = staffDe(ses);
-      var ok2 = u.claveHash ? env.hash(str(p.actual)) === u.claveHash : rutKey(p.actual) === rutKey(u.rut);
+      var ok2 = u.claveHash ? env.hash(str(p.actual).trim()) === u.claveHash : rutKey(p.actual) === rutKey(u.rut);
       if (!ok2) fail('La clave actual no es correcta.');
       updUser(u.id, { claveHash: env.hash(nueva), debeCambiarClave: 'NO' });
       log(u.nombre, 'Cambio de clave', '');
@@ -565,13 +612,15 @@ function createCore(env) {
   };
 
   A.recuperarClave = function (p) {
-    var n = norm(p.usuario), e = norm(p.email), u = null;
-    db.all('Usuarios').forEach(function (x) { if (si(x.activo) && norm(x.nombre) === n && norm(x.email) === e) u = x; });
-    var msg = 'Si los datos coinciden con un funcionario registrado, recibirá una clave temporal en su correo.';
+    var e = norm(p.email || p.usuario), u = null;
+    db.all('Usuarios').forEach(function (x) { if (si(x.activo) && x.email && norm(x.email) === e) u = x; });
+    var msg = 'Si el correo corresponde a un funcionario registrado, recibirá una clave temporal en unos minutos. Revise también la carpeta de spam.';
     if (!u) return msg;
+    if (intentos('r' + e) >= 3) fail('Ya se enviaron varias claves temporales a este correo. Espere 15 minutos o contacte al Equipo de Gestión.');
+    intentos('r' + e, true);
     var temp = claveTemporal();
     updUser(u.id, { claveHash: env.hash(temp), debeCambiarClave: 'SI' });
-    correoCuenta(u, temp, 'Restablecimiento de clave', 'Se solicitó restablecer su clave de acceso. Ingrese con la siguiente clave temporal; el sistema le pedirá crear una nueva.');
+    correoCuenta(u, temp, 'temporal');
     log(u.nombre, 'Recuperación de clave', 'Autoservicio');
     return msg;
   };
@@ -816,19 +865,30 @@ function createCore(env) {
     return '';
   }
   function validarUsuario(d, idActual) {
-    var nombre = str(d.nombre).replace(/\s+/g, ' ').trim();
+    var nombre = str(d.nombre).replace(/\s+/g, ' ').trim(), email = str(d.email).trim().toLowerCase();
     if (nombre.split(' ').length < 2) fail('Ingrese nombre y apellido del funcionario (' + (nombre || 'vacío') + ').');
+    if (!email) fail('Ingrese el correo institucional de ' + nombre + ' (será su usuario).');
+    if (!emailValido(email)) fail('El correo de ' + nombre + ' no es válido.');
     if (!rutValido(d.rut)) fail('RUT no válido para ' + nombre + '.');
     var rol = rolDe(d.rol);
     if (!rol) fail('Perfil no válido para ' + nombre + '. Use: Docente, Asistente de Educación o Equipo de Gestión.');
-    if (d.email && !emailValido(d.email)) fail('Correo no válido para ' + nombre + '.');
     db.all('Usuarios').forEach(function (x) {
       if (str(x.id) === str(idActual)) return;
-      if (norm(x.nombre) === norm(nombre)) fail('Ya existe un usuario con el nombre «' + nombre + '». Agregue el segundo apellido para diferenciarlo.');
+      if (norm(x.email) === norm(email)) fail('Ya existe un usuario con el correo ' + email + '.');
       if (rutKey(x.rut) === rutKey(d.rut)) fail('Ya existe un usuario con el RUT ' + rutFmt(d.rut) + '.');
     });
-    return { nombre: nombre, rut: rutFmt(d.rut), email: str(d.email).trim().toLowerCase(), rol: rol,
+    return { nombre: nombre, rut: rutFmt(d.rut), email: email, rol: rol,
       cursos: lista(d.cursos).join(', '), fichas: lista(d.fichas).map(rutFmt).join(', ') };
+  }
+  /* Crea la cuenta con una clave generada y la envía por correo.
+     Si el correo no se pudo enviar (o no se pidió), devuelve la clave para entregarla personalmente. */
+  function crearCuenta(limpio, enviar) {
+    var clave = claveTemporal();
+    limpio.id = env.uuid(); limpio.claveHash = env.hash(clave); limpio.debeCambiarClave = 'SI'; limpio.activo = 'SI'; limpio.videoVisto = 'NO';
+    limpio.creado = env.now(); limpio.ultimoAcceso = '';
+    db.insert('Usuarios', limpio);
+    var enviado = enviar !== false && correoCuenta(limpio, clave, 'bienvenida');
+    return { correoEnviado: enviado, usuario: limpio.email, clave: enviado ? null : clave };
   }
 
   A.listarUsuarios = function (p, ses) {
@@ -840,21 +900,18 @@ function createCore(env) {
 
   A.guardarUsuario = function (p, ses) {
     var yo = staffDe(ses); soloGestion(yo);
-    var d = p.usuario || {}, limpio = validarUsuario(d, d.id), correo = false;
+    var d = p.usuario || {}, limpio = validarUsuario(d, d.id);
     if (d.id) {
       if (!findUser(d.id)) fail('Usuario no encontrado.');
       if (str(d.id) === str(yo.id) && limpio.rol !== 'gestion') fail('No puede quitarse a sí mismo el perfil de Equipo de Gestión.');
       limpio.activo = siNo(d.activo !== false);
       updUser(d.id, limpio);
       log(yo.nombre, 'Usuario editado', limpio.nombre);
-    } else {
-      limpio.id = env.uuid(); limpio.claveHash = ''; limpio.debeCambiarClave = 'NO'; limpio.activo = 'SI'; limpio.videoVisto = 'NO';
-      limpio.creado = env.now(); limpio.ultimoAcceso = '';
-      db.insert('Usuarios', limpio);
-      if (p.enviarCorreo !== false) correo = correoCuenta(limpio, limpio.rut + ' (su RUT, sin puntos y con guion)', 'Cuenta creada', 'Se ha creado su cuenta en la plataforma de Fichas de Matrícula. Sus datos de acceso son:');
-      log(yo.nombre, 'Usuario creado', limpio.nombre);
+      return { editado: true };
     }
-    return { correoEnviado: correo };
+    var r = crearCuenta(limpio, p.enviarCorreo);
+    log(yo.nombre, 'Usuario creado', limpio.nombre + ' · ' + limpio.email + (r.correoEnviado ? ' (correo enviado)' : ''));
+    return r;
   };
 
   A.importarUsuarios = function (p, ses) {
@@ -863,20 +920,20 @@ function createCore(env) {
     (p.filas || []).forEach(function (fila, i) {
       try {
         var existente = null;
-        db.all('Usuarios').forEach(function (x) { if (rutKey(x.rut) === rutKey(fila.rut)) existente = x; });
+        db.all('Usuarios').forEach(function (x) {
+          if (rutKey(x.rut) === rutKey(fila.rut) || (fila.email && norm(x.email) === norm(fila.email))) existente = x;
+        });
         var limpio = validarUsuario(fila, existente ? existente.id : null);
         if (existente) {
           updUser(existente.id, limpio);
-          res.push({ fila: i + 2, nombre: limpio.nombre, estado: 'actualizado', mensaje: 'Datos actualizados' });
+          res.push({ fila: i + 2, nombre: limpio.nombre, usuario: limpio.email, estado: 'actualizado', mensaje: 'Datos actualizados (la clave no cambia)' });
         } else {
-          limpio.id = env.uuid(); limpio.claveHash = ''; limpio.debeCambiarClave = 'NO'; limpio.activo = 'SI'; limpio.videoVisto = 'NO';
-          limpio.creado = env.now(); limpio.ultimoAcceso = '';
-          db.insert('Usuarios', limpio);
-          var c = p.enviarCorreo !== false && correoCuenta(limpio, limpio.rut + ' (su RUT, sin puntos y con guion)', 'Cuenta creada', 'Se ha creado su cuenta en la plataforma de Fichas de Matrícula. Sus datos de acceso son:');
-          res.push({ fila: i + 2, nombre: limpio.nombre, estado: 'creado', mensaje: c ? 'Creado y correo enviado' : (limpio.email ? 'Creado (no se pudo enviar el correo)' : 'Creado (sin correo registrado)') });
+          var r = crearCuenta(limpio, p.enviarCorreo);
+          res.push({ fila: i + 2, nombre: limpio.nombre, usuario: limpio.email, estado: 'creado', clave: r.clave,
+            mensaje: r.correoEnviado ? 'Creado · clave enviada al correo' : 'Creado · entregue la clave manualmente' });
         }
       } catch (e) {
-        res.push({ fila: i + 2, nombre: str(fila.nombre), estado: 'error', mensaje: e.userMsg || String(e.message || e) });
+        res.push({ fila: i + 2, nombre: str(fila.nombre), usuario: str(fila.email), estado: 'error', mensaje: e.userMsg || String(e.message || e) });
       }
     });
     log(yo.nombre, 'Carga masiva de usuarios', res.length + ' filas');
@@ -896,12 +953,12 @@ function createCore(env) {
     var yo = staffDe(ses); soloGestion(yo);
     var u = findUser(p.id);
     if (!u) fail('Usuario no encontrado.');
-    updUser(u.id, { claveHash: '', debeCambiarClave: 'SI' });
-    var c = correoCuenta(u, rutFmt(u.rut) + ' (su RUT, sin puntos y con guion)', 'Clave restablecida', 'Su clave de acceso fue restablecida por el Equipo de Gestión. Al ingresar, el sistema le pedirá crear una nueva clave.');
-    log(yo.nombre, 'Clave de usuario restablecida', u.nombre);
-    return { correoEnviado: c };
+    var clave = claveTemporal();
+    updUser(u.id, { claveHash: env.hash(clave), debeCambiarClave: 'SI' });
+    var c = correoCuenta(u, clave, 'restablecida');
+    log(yo.nombre, 'Clave de usuario restablecida', u.nombre + (c ? ' (enviada por correo)' : ''));
+    return { correoEnviado: c, usuario: u.email, clave: c ? null : clave };
   };
-
   /* ---------- configuración (Equipo de Gestión) ---------- */
   A.datosAdmin = function (p, ses) {
     soloGestion(staffDe(ses));

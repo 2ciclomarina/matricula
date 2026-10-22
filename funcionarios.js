@@ -617,18 +617,27 @@ var Staff = (function () {
 
   /* ================================ USUARIOS ================================ */
   var usuarios = [];
+  // Tarjeta con usuario y clave para mostrar al Equipo de Gestión cuando el correo no se envió.
+  function tarjetaClave(usuario, clave) {
+    return '<div style="text-align:left;background:#fbf7ec;border:2px dashed var(--sand);border-radius:14px;padding:16px 18px;margin-top:14px">' +
+      '<div class="eyebrow" style="color:#8a6a1f">🔑 Datos de acceso para entregar</div>' +
+      '<div class="small muted" style="margin-top:10px">Usuario</div><div class="meta-v" style="word-break:break-all">' + esc(usuario) + '</div>' +
+      '<div class="small muted" style="margin-top:10px">Clave</div><div class="row"><code style="font-size:22px;letter-spacing:3px;background:var(--ink);color:#fff;padding:8px 16px;border-radius:10px">' + esc(clave) + '</code>' +
+      '<button class="btn sm ghost" onclick="navigator.clipboard && navigator.clipboard.writeText(\'' + esc(clave) + '\');this.textContent=\'✓ Copiada\'">Copiar</button></div>' +
+      '<div class="small muted" style="margin-top:8px">Al ingresar, el sistema le pedirá crear una clave personal.</div></div>';
+  }
   async function vUsuarios() {
     usuarios = await UI.api('listarUsuarios');
     var color = { gestion: 'b-gold', docente: 'b-blue', asistente: 'b-desbloqueada' };
     main().innerHTML = '<div class="page-h"><h2>Usuarios funcionarios</h2><span class="badge b-blue">' + usuarios.length + '</span><span class="grow"></span>' +
       '<button class="btn gold" data-u="nuevo">➕ Nuevo funcionario</button><button class="btn ghost" data-u="masivo">📥 Carga masiva (Excel)</button><button class="btn ghost" data-u="plantilla">⬇ Plantilla Excel</button></div>' +
-      '<div class="card" style="padding:12px 16px;margin-bottom:16px;background:var(--sky)"><span class="small">ℹ️ El <b>usuario</b> de cada funcionario es su <b>nombre completo</b> y la <b>clave inicial es su RUT</b> (puede cambiarla en «Mi cuenta»). Docentes y asistentes solo ven, editan e imprimen las fichas de los cursos o estudiantes asignados.</span></div>' +
-      '<section class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table class="t"><thead><tr><th>Nombre (usuario)</th><th>RUT</th><th class="hide-sm">Correo</th><th>Perfil</th><th>Asignación</th><th class="hide-sm">Último acceso</th><th></th></tr></thead><tbody>' +
+      '<div class="card" style="padding:12px 16px;margin-bottom:16px;background:var(--sky)"><span class="small">📧 El <b>usuario</b> de cada funcionario es su <b>correo institucional</b>. La <b>clave se genera automáticamente y se envía a ese correo</b>; al ingresar por primera vez se le pide crear una clave personal. Docentes y asistentes solo ven, editan e imprimen las fichas asignadas.</span></div>' +
+      '<section class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table class="t"><thead><tr><th>Nombre</th><th>Usuario (correo)</th><th class="hide-sm">RUT</th><th>Perfil</th><th>Asignación</th><th class="hide-sm hide-md">Último acceso</th><th></th></tr></thead><tbody>' +
       usuarios.map(function (u) {
-        return '<tr' + (u.activo ? '' : ' style="opacity:.55"') + '><td class="name">' + esc(u.nombre) + (u.activo ? '' : ' <span class="badge b-gray">inactivo</span>') + '</td><td class="nowrap">' + esc(u.rut) + '</td><td class="hide-sm small">' + esc(u.email || '—') + '</td>' +
-          '<td><span class="badge ' + (color[u.rol] || 'b-gray') + '">' + esc(u.rolNombre) + '</span></td><td class="small">' + (u.rol === 'gestion' ? '<span class="muted">Todas las fichas</span>' : esc(u.cursos.join(', ') || '—') + (u.fichas.length ? '<br><span class="muted">+ ' + u.fichas.length + ' fichas individuales</span>' : '')) + '</td>' +
-          '<td class="hide-sm small muted">' + esc(u.ultimoAcceso || 'Nunca') + '</td><td><div class="acts"><button class="icon-btn" title="Editar" data-u="editar" data-id="' + esc(u.id) + '">✏️</button>' +
-          '<button class="icon-btn" title="Restablecer clave" data-u="clave" data-id="' + esc(u.id) + '">🔑</button>' + (u.id !== P.id ? '<button class="icon-btn" title="Eliminar" data-u="eliminar" data-id="' + esc(u.id) + '">🗑</button>' : '') + '</div></td></tr>';
+        return '<tr' + (u.activo ? '' : ' style="opacity:.55"') + '><td class="name">' + esc(u.nombre) + (u.activo ? '' : ' <span class="badge b-gray">inactivo</span>') + '</td><td class="small" style="word-break:break-all">' + esc(u.email || '— sin correo —') + '</td><td class="hide-sm nowrap">' + esc(u.rut) + '</td>' +
+          '<td><span class="badge ' + (color[u.rol] || 'b-gray') + '">' + esc(u.rolNombre) + '</span>' + (u.debeCambiarClave ? '<br><span class="small muted">clave inicial pendiente</span>' : '') + '</td><td class="small">' + (u.rol === 'gestion' ? '<span class="muted">Todas las fichas</span>' : esc(u.cursos.join(', ') || '—') + (u.fichas.length ? '<br><span class="muted">+ ' + u.fichas.length + ' fichas individuales</span>' : '')) + '</td>' +
+          '<td class="hide-sm hide-md small muted">' + esc(u.ultimoAcceso || 'Nunca') + '</td><td><div class="acts"><button class="icon-btn" title="Editar" data-u="editar" data-id="' + esc(u.id) + '">✏️</button>' +
+          '<button class="icon-btn" title="Enviar nueva clave" data-u="clave" data-id="' + esc(u.id) + '">🔑</button>' + (u.id !== P.id ? '<button class="icon-btn" title="Eliminar" data-u="eliminar" data-id="' + esc(u.id) + '">🗑</button>' : '') + '</div></td></tr>';
       }).join('') + '</tbody></table></div></section>';
     main().onclick = clickUsuarios;
   }
@@ -639,9 +648,12 @@ var Staff = (function () {
     if (a === 'plantilla') return plantillaFuncionarios();
     if (a === 'masivo') return cargaMasiva();
     if (a === 'clave') {
-      if (!await UI.confirm('¿Restablecer la clave?', 'La clave de <b>' + esc(u.nombre) + '</b> volverá a ser su RUT y se le pedirá crear una nueva al ingresar.' + (u.email ? ' Se enviará un aviso a ' + esc(u.email) + '.' : ''), 'Restablecer')) return;
-      var r = await UI.intentar(function () { return UI.api('restablecerClaveUsuario', { id: u.id }); }, 'Restableciendo…');
-      if (r) UI.success('Clave restablecida', 'La clave de <b>' + esc(u.nombre) + '</b> ahora es su RUT.' + (r.correoEnviado ? '<br>📧 Se envió un correo informando el cambio.' : ''));
+      if (!await UI.confirm('¿Enviar una nueva clave?', 'Se generará una clave nueva para <b>' + esc(u.nombre) + '</b> y se enviará a <b>' + esc(u.email || 'su correo') + '</b>. La clave anterior dejará de funcionar.', '📧 Generar y enviar')) return;
+      var r = await UI.intentar(function () { return UI.api('restablecerClaveUsuario', { id: u.id }); }, 'Generando clave…');
+      if (r) {
+        await UI.success('Clave restablecida', r.correoEnviado ? '📧 La nueva clave fue enviada a <b>' + esc(r.usuario) + '</b>.' : 'No se pudo enviar el correo. Entregue estos datos personalmente:' + tarjetaClave(r.usuario, r.clave));
+        vUsuarios();
+      }
     }
     if (a === 'eliminar') {
       if (!await UI.confirm('¿Eliminar usuario?', 'Se eliminará la cuenta de <b>' + esc(u.nombre) + '</b>.', 'Eliminar', 'bad', 'warning')) return;
@@ -653,18 +665,19 @@ var Staff = (function () {
     var cs = S.form.cursos;
     UI.modal({
       title: u.id ? '✏️ Editar funcionario' : '➕ Nuevo funcionario', size: 'wide',
-      html: '<div class="grid"><div class="field"><label>Nombre completo (será su usuario)<span class="req">*</span></label><input id="u-nom" value="' + esc(u.nombre) + '" placeholder="Nombre Apellido Apellido"></div>' +
-        '<div class="field"><label>RUT (será su clave inicial)<span class="req">*</span></label><input id="u-rut" value="' + esc(u.rut) + '" placeholder="12345678-9"></div>' +
-        '<div class="field"><label>Correo electrónico</label><input id="u-mail" type="email" value="' + esc(u.email) + '"></div>' +
+      html: '<div class="grid"><div class="field"><label>Correo institucional (será su usuario)<span class="req">*</span></label><input id="u-mail" type="email" value="' + esc(u.email) + '" placeholder="nombre@colegio.cl"></div>' +
+        '<div class="field"><label>Nombre completo<span class="req">*</span></label><input id="u-nom" value="' + esc(u.nombre) + '" placeholder="Nombre Apellido Apellido"></div>' +
+        '<div class="field"><label>RUT (aparece en la firma de matrícula)<span class="req">*</span></label><input id="u-rut" value="' + esc(u.rut) + '" placeholder="12345678-9"></div>' +
         '<div class="field"><label>Perfil<span class="req">*</span></label><select id="u-rol"><option value="docente">Docente</option><option value="asistente">Asistente de Educación</option><option value="gestion">Equipo de Gestión</option></select></div>' +
         '<div class="field full" id="u-asig"><label>Cursos de procedencia asignados (ej.: su jefatura actual)</label><div class="grid-3" style="gap:6px 14px;background:var(--sky-2);padding:12px;border-radius:10px">' +
         cs.map(function (c) { return '<label class="check" style="font-weight:600"><input type="checkbox" data-c value="' + esc(c) + '"' + (u.cursos.indexOf(c) >= 0 ? ' checked' : '') + '>' + esc(c) + '</label>'; }).join('') + '</div>' +
         '<label style="margin-top:12px">…o niveles ' + esc(S.form.config.anio) + ' asignados (ve todas las fichas que se matriculan en ese nivel)</label><div class="grid-3" style="gap:6px 14px;background:#fffaf0;padding:12px;border-radius:10px">' +
         S.form.niveles.filter(function (n) { return cs.indexOf(n) < 0; }).map(function (c) { return '<label class="check" style="font-weight:600"><input type="checkbox" data-c value="' + esc(c) + '"' + (u.cursos.indexOf(c) >= 0 ? ' checked' : '') + '>' + esc(c) + '</label>'; }).join('') + '</div></div>' +
         '<div class="field full" id="u-fich"><label>Fichas asignadas individualmente (RUT de estudiantes, separados por coma)</label><textarea id="u-fichas" rows="2" placeholder="Opcional. Ej.: 27123456-7, 27234567-8">' + esc(u.fichas.join(', ')) + '</textarea><small class="help">Útil para asignar un grupo específico de fichas a un/a asistente de la educación.</small></div>' +
-        (u.id ? '<div class="field"><label class="check"><input type="checkbox" id="u-act"' + (u.activo ? ' checked' : '') + '> Usuario activo</label></div>' : '<div class="field full"><label class="check"><input type="checkbox" id="u-mailsend" checked> Enviar correo con el usuario y la clave</label></div>') + '</div>',
+        (u.id ? '<div class="field"><label class="check"><input type="checkbox" id="u-act"' + (u.activo ? ' checked' : '') + '> Usuario activo</label></div>' :
+          '<div class="field full"><label class="check"><input type="checkbox" id="u-mailsend" checked> <span>📧 Generar una clave y enviarla al correo institucional (recomendado)</span></label></div>') + '</div>',
       buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, {
-        text: 'Guardar', cls: 'ok', onClick: async function (el) {
+        text: u.id ? 'Guardar' : 'Crear cuenta', cls: 'ok', onClick: async function (el) {
           var d = { id: u.id, nombre: el.querySelector('#u-nom').value, rut: el.querySelector('#u-rut').value, email: el.querySelector('#u-mail').value, rol: el.querySelector('#u-rol').value,
             cursos: UI.$$('[data-c]:checked', el).map(function (x) { return x.value; }), fichas: el.querySelector('#u-fichas').value, activo: u.id ? el.querySelector('#u-act').checked : true };
           try { return await UI.api('guardarUsuario', { usuario: d, enviarCorreo: !u.id && el.querySelector('#u-mailsend').checked }); }
@@ -676,25 +689,26 @@ var Staff = (function () {
         function vis() { var g = rol.value === 'gestion'; el.querySelector('#u-asig').classList.toggle('hidden', g); el.querySelector('#u-fich').classList.toggle('hidden', g); }
         rol.onchange = vis; vis();
       }
-    }).then(function (r) {
+    }).then(async function (r) {
       if (!r) return;
-      UI.success(u.id ? 'Funcionario actualizado' : 'Cuenta creada', u.id ? 'Los cambios fueron guardados.' : 'La cuenta fue creada. Usuario: nombre completo · Clave: RUT.' + (r.correoEnviado ? '<br>📧 Se envió un correo con los datos de acceso.' : ''));
+      if (u.id) await UI.success('Funcionario actualizado', 'Los cambios fueron guardados.');
+      else await UI.success('Cuenta creada', r.correoEnviado ? '📧 Se envió un correo a <b>' + esc(r.usuario) + '</b> con su usuario y su clave.' : 'Entregue estos datos personalmente:' + tarjetaClave(r.usuario, r.clave));
       vUsuarios();
     });
   }
   function plantillaFuncionarios() {
     var ws = XLSX.utils.aoa_to_sheet([
-      ['NOMBRE COMPLETO', 'RUT', 'CORREO', 'PERFIL', 'CURSOS ASIGNADOS', 'FICHAS ASIGNADAS (RUT ESTUDIANTES)'],
-      ['María José Pérez Soto', '12345678-5', 'maria.perez@colegio.cl', 'Docente', '1° Básico A', ''],
-      ['Juan Carlos Rojas Muñoz', '9876543-3', 'juan.rojas@colegio.cl', 'Asistente de Educación', 'Kinder A, PreKinder A', ''],
-      ['Ana Luisa Fuentes Díaz', '15111222-6', 'ana.fuentes@colegio.cl', 'Equipo de Gestión', '', '']
+      ['CORREO INSTITUCIONAL', 'NOMBRE COMPLETO', 'RUT', 'PERFIL', 'CURSOS ASIGNADOS', 'FICHAS ASIGNADAS (RUT ESTUDIANTES)'],
+      ['maria.perez@colegio.cl', 'María José Pérez Soto', '12345678-5', 'Docente', '1° Básico A', ''],
+      ['juan.rojas@colegio.cl', 'Juan Carlos Rojas Muñoz', '9876543-3', 'Asistente de Educación', 'Kinder A, PreKinder A', ''],
+      ['ana.fuentes@colegio.cl', 'Ana Luisa Fuentes Díaz', '15111222-6', 'Equipo de Gestión', '', '']
     ]);
-    ws['!cols'] = [{ wch: 32 }, { wch: 14 }, { wch: 30 }, { wch: 24 }, { wch: 30 }, { wch: 36 }];
+    ws['!cols'] = [{ wch: 32 }, { wch: 32 }, { wch: 14 }, { wch: 24 }, { wch: 30 }, { wch: 36 }];
     var ins = XLSX.utils.aoa_to_sheet([['INSTRUCCIONES'], [''], ['1. Complete una fila por funcionario en la hoja «Funcionarios» (borre las filas de ejemplo).'],
-      ['2. NOMBRE COMPLETO será el usuario de ingreso. Escriba nombres y apellidos (no se puede repetir).'], ['3. RUT: con guion y dígito verificador, ej. 12345678-9. Será la clave inicial.'],
-      ['4. PERFIL: escriba exactamente Docente, Asistente de Educación o Equipo de Gestión.'], ['5. CURSOS ASIGNADOS: separados por coma, escritos igual que en la lista de abajo.'],
-      ['6. FICHAS ASIGNADAS: opcional, RUT de estudiantes separados por coma.'], ['7. Si el RUT ya existe, el usuario se actualiza; si no, se crea y se envía un correo.'], [''], ['CURSOS DISPONIBLES']]
-      .concat(S.form.cursos.map(function (c) { return [c]; })));
+      ['2. CORREO INSTITUCIONAL será el usuario de ingreso. La clave se genera automáticamente y se envía a ese correo.'], ['3. NOMBRE COMPLETO y RUT (con guion, ej. 12345678-9) aparecen en la firma de las fichas que matricule.'],
+      ['4. PERFIL: escriba Docente, Asistente de Educación o Equipo de Gestión.'], ['5. CURSOS ASIGNADOS: separados por coma, escritos igual que en la lista de abajo (curso de procedencia o nivel).'],
+      ['6. FICHAS ASIGNADAS: opcional, RUT de estudiantes separados por coma.'], ['7. Si el correo o el RUT ya existen, los datos se actualizan (la clave no cambia).'], [''], ['CURSOS DISPONIBLES']]
+      .concat(S.form.cursos.map(function (c) { return [c]; })).concat([[''], ['NIVELES ' + S.form.config.anio]]).concat(S.form.niveles.map(function (c) { return [c]; })));
     ins['!cols'] = [{ wch: 100 }];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Funcionarios');
@@ -705,9 +719,10 @@ var Staff = (function () {
     var filas = [];
     UI.modal({
       title: '📥 Carga masiva de funcionarios', size: 'xwide',
-      html: '<ol class="steps"><li><div>Descargue la <a href="#" id="pl-f">plantilla Excel</a> y complétela (una fila por funcionario).</div></li><li><div>Súbala aquí. El sistema crea las cuentas automáticamente (usuario = nombre completo, clave = RUT) y envía un correo a cada uno.</div></li></ol>' +
+      html: '<ol class="steps"><li><div>Descargue la <a href="#" id="pl-f">plantilla Excel</a> y complétela (una fila por funcionario, con su <b>correo institucional</b>).</div></li>' +
+        '<li><div>Súbala aquí. El sistema crea las cuentas automáticamente y <b>envía a cada funcionario un correo con su usuario y su clave</b>.</div></li></ol>' +
         '<div class="dropzone" id="dz" style="margin-top:14px">📂 <b>Pinche aquí o arrastre el archivo Excel</b><input type="file" id="fx" accept=".xlsx,.xls,.csv" hidden></div><div id="prev" style="margin-top:14px"></div>' +
-        '<label class="check" style="margin-top:12px"><input type="checkbox" id="mail" checked><span>Enviar correo a cada funcionario con su usuario y clave</span></label>',
+        '<label class="check" style="margin-top:12px"><input type="checkbox" id="mail" checked><span>📧 Enviar a cada funcionario un correo con su usuario y su clave</span></label>',
       buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, {
         text: 'Crear cuentas', cls: 'ok', onClick: async function (el) {
           if (!filas.length) { UI.toast('Primero seleccione el archivo', 'bad'); return false; }
@@ -727,21 +742,21 @@ var Staff = (function () {
           try {
             var wb = await UI.leerExcel(file), ws = wb.Sheets[wb.SheetNames[0]];
             var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
-            var hi = rows.findIndex(function (r) { return r.some(function (c) { return /nombre/.test(norm(c)); }); });
-            if (hi < 0) throw new Error('No se encontró la columna «NOMBRE COMPLETO».');
+            var hi = rows.findIndex(function (r) { return r.some(function (c) { return /correo|mail|nombre/.test(norm(c)); }); });
+            if (hi < 0) throw new Error('No se encontró la columna «CORREO INSTITUCIONAL».');
             var map = {};
             rows[hi].forEach(function (c, i) {
               var n = norm(c);
-              if (/ficha/.test(n)) map.fichas = i; else if (/nombre/.test(n)) map.nombre = i; else if (/rut/.test(n)) map.rut = i;
-              else if (/correo|mail/.test(n)) map.email = i; else if (/perfil|rol|cargo/.test(n)) map.rol = i; else if (/curso/.test(n)) map.cursos = i;
+              if (/ficha/.test(n)) map.fichas = i; else if (/correo|mail/.test(n)) map.email = i; else if (/nombre/.test(n)) map.nombre = i;
+              else if (/rut/.test(n)) map.rut = i; else if (/perfil|rol|cargo/.test(n)) map.rol = i; else if (/curso/.test(n)) map.cursos = i;
             });
-            filas = rows.slice(hi + 1).filter(function (r) { return String(r[map.nombre] || '').trim(); }).map(function (r) {
+            filas = rows.slice(hi + 1).filter(function (r) { return String(r[map.nombre] || '').trim() || String(r[map.email] || '').trim(); }).map(function (r) {
               var o = {}; for (var k in map) o[k] = String(r[map[k]] || '').trim(); return o;
             });
-            el.querySelector('#prev').innerHTML = '<div class="table-wrap card" style="padding:0;max-height:300px;overflow:auto"><table class="t"><thead><tr><th>Nombre</th><th>RUT</th><th>Correo</th><th>Perfil</th><th>Cursos</th><th>Revisión</th></tr></thead><tbody>' +
+            el.querySelector('#prev').innerHTML = '<div class="table-wrap card" style="padding:0;max-height:300px;overflow:auto"><table class="t"><thead><tr><th>Correo (usuario)</th><th>Nombre</th><th>RUT</th><th>Perfil</th><th>Cursos</th><th>Revisión</th></tr></thead><tbody>' +
               filas.map(function (f) {
-                var prob = !CoreUtil.rutValido(f.rut) ? 'RUT no válido' : !f.rol ? 'Falta perfil' : '';
-                return '<tr><td>' + esc(f.nombre) + '</td><td>' + esc(f.rut) + '</td><td class="small">' + esc(f.email) + '</td><td>' + esc(f.rol) + '</td><td class="small">' + esc(f.cursos) + '</td><td>' + (prob ? '<span class="badge b-red">' + prob + '</span>' : '<span class="badge b-matriculada">OK</span>') + '</td></tr>';
+                var prob = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email || '') ? 'Falta correo válido' : !CoreUtil.rutValido(f.rut) ? 'RUT no válido' : !f.rol ? 'Falta perfil' : '';
+                return '<tr><td class="small">' + esc(f.email) + '</td><td>' + esc(f.nombre) + '</td><td>' + esc(f.rut) + '</td><td>' + esc(f.rol) + '</td><td class="small">' + esc(f.cursos) + '</td><td>' + (prob ? '<span class="badge b-red">' + prob + '</span>' : '<span class="badge b-matriculada">OK</span>') + '</td></tr>';
               }).join('') + '</tbody></table></div><p class="small muted">' + filas.length + ' funcionarios encontrados en «' + esc(file.name) + '».</p>';
           } catch (e) { UI.toast('No se pudo leer el archivo: ' + e.message, 'bad'); }
         }
@@ -749,15 +764,22 @@ var Staff = (function () {
     }).then(function (res) {
       if (!res) return;
       var c = res.filter(function (r) { return r.estado === 'creado'; }).length, a = res.filter(function (r) { return r.estado === 'actualizado'; }).length, er = res.filter(function (r) { return r.estado === 'error'; });
+      var pendientes = res.filter(function (r) { return r.clave; });
       UI.modal({
         center: true, icon: er.length ? 'warning' : 'success', title: 'Carga masiva finalizada', size: 'wide',
         html: '<p style="font-size:15.5px"><b>' + c + '</b> cuentas creadas · <b>' + a + '</b> actualizadas · <b>' + er.length + '</b> con errores</p>' +
-          '<div class="table-wrap" style="max-height:300px;overflow:auto;text-align:left"><table class="t"><thead><tr><th>Fila</th><th>Nombre</th><th>Resultado</th></tr></thead><tbody>' +
-          res.map(function (r) { return '<tr><td>' + r.fila + '</td><td>' + esc(r.nombre) + '</td><td><span class="badge ' + (r.estado === 'error' ? 'b-red' : 'b-matriculada') + '">' + esc(r.mensaje) + '</span></td></tr>'; }).join('') + '</tbody></table></div>'
+          (pendientes.length ? '<p class="small" style="color:#8a6a1f">⚠️ ' + pendientes.length + ' clave(s) no se enviaron por correo. Descárguelas para entregarlas personalmente.</p>' : '') +
+          '<div class="table-wrap" style="max-height:300px;overflow:auto;text-align:left"><table class="t"><thead><tr><th>Fila</th><th>Usuario (correo)</th><th>Nombre</th><th>Resultado</th></tr></thead><tbody>' +
+          res.map(function (r) { return '<tr><td>' + r.fila + '</td><td class="small">' + esc(r.usuario || '') + '</td><td>' + esc(r.nombre) + '</td><td><span class="badge ' + (r.estado === 'error' ? 'b-red' : r.clave ? 'b-gold' : 'b-matriculada') + '">' + esc(r.mensaje) + '</span></td></tr>'; }).join('') + '</tbody></table></div>',
+        buttons: (pendientes.length ? [{ text: '⬇ Descargar claves no enviadas', cls: 'gold', value: false, onClick: function () {
+          var wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Nombre', 'Usuario (correo)', 'Clave']].concat(pendientes.map(function (r) { return [r.nombre, r.usuario, r.clave]; }))), 'Claves');
+          XLSX.writeFile(wb, 'claves_funcionarios_CONFIDENCIAL.xlsx');
+          return false;
+        } }] : []).concat([{ text: 'Entendido', value: true }])
       }).then(vUsuarios);
     });
   }
-
   /* ========================= DATOS DE LA FICHA (campos) ========================= */
   async function vFormulario() {
     admin = await UI.api('datosAdmin');
