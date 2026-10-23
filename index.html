@@ -2139,6 +2139,10 @@ function createCore_(env) {
         if (!f.rut || f.estado === 'retirado') return;
         if (ciclos.length && ciclos.indexOf(cicloDe(f.curso)) < 0) return;
         if (niveles.length && niveles.indexOf(norm(f.curso)) < 0) return;
+        // completadas = la familia ya envió la ficha (o el colegio ya matriculó); pendientes = aún no la envía
+        var completa = f.estado === 'enviada' || f.estado === 'matriculada';
+        if (filtro.estadoFicha === 'pendientes' && completa) return;
+        if (filtro.estadoFicha === 'completadas' && !completa) return;
         agregar(f.apo_email);
         if (filtro.suplentes) agregar(f.sup_email);
       });
@@ -2173,7 +2177,13 @@ function createCore_(env) {
   A.comunicacionesInfo = function (p, ses) {
     soloGestion(staffDe(ses));
     var conteo = {}; Object.keys(PUBLICOS).forEach(function (k) { conteo[k] = destinatarios(k, {}).length; });
-    var porCiclo = {}; CICLOS.forEach(function (ci) { var n = destinatarios('apoderados', { ciclos: [ci] }).length; if (n) porCiclo[ci] = n; });
+    var porCiclo = {}, porEstado = {};
+    CICLOS.forEach(function (ci) {
+      var n = destinatarios('apoderados', { ciclos: [ci] }).length;
+      if (!n) return;
+      porCiclo[ci] = n;
+      porEstado[ci] = { todos: n, pendientes: destinatarios('apoderados', { ciclos: [ci], estadoFicha: 'pendientes' }).length, completadas: destinatarios('apoderados', { ciclos: [ci], estadoFicha: 'completadas' }).length };
+    });
     var fs = db.all('Fichas').filter(function (f) { return f.rut && f.estado !== 'retirado'; });
     var bien = { total: fs.length, conCorreo: fs.filter(function (f) { return emailValido(f.apo_email); }).length, enviadas: fs.filter(function (f) { return str(f.bienvenidaEnviada).trim(); }).length };
     bien.pendientes = fs.filter(function (f) { return emailValido(f.apo_email) && !str(f.bienvenidaEnviada).trim(); }).length;
@@ -2181,7 +2191,7 @@ function createCore_(env) {
     var info = {}; try { info = env.infoCorreo ? env.infoCorreo() : {}; } catch (e) { info = {}; }
     var hist = db.all('Comunicados').map(function (x) { var o = limpiarFila(x); o.restantes = (parseJSON(x.pendientes, []) || []).length; delete o.pendientes; return o; })
       .sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; }).slice(0, 60);
-    return { conteo: conteo, porCiclo: porCiclo, bienvenida: bien, cuota: cuotaHoy(), remitente: info.remitente || '', historial: hist, publicos: PUBLICOS };
+    return { conteo: conteo, porCiclo: porCiclo, porEstado: porEstado, bienvenida: bien, cuota: cuotaHoy(), remitente: info.remitente || '', historial: hist, publicos: PUBLICOS };
   };
   A.enviarComunicado = function (p, ses) {
     var u = staffDe(ses); soloGestion(u);
@@ -2194,7 +2204,8 @@ function createCore_(env) {
     var c = { id: env.uuid(), fecha: env.now(), publico: p.publico, filtro: JSON.stringify(p.filtro || {}), asunto: asunto.slice(0, 150), mensaje: mensaje.slice(0, 8000),
       imagenUrl: str(p.imagenUrl), autor: u.nombre, total: String(lista2.length), enviados: '0', estado: 'pendiente', pendientes: JSON.stringify(lista2) };
     db.insert('Comunicados', c);
-    log(u.nombre, 'Comunicado a ' + PUBLICOS[p.publico], asunto + ' · ' + lista2.length + ' destinatarios');
+    var detalleEstado = { pendientes: ' (ficha sin completar)', completadas: ' (ficha completada)' }[(p.filtro || {}).estadoFicha] || '';
+    log(u.nombre, 'Comunicado a ' + PUBLICOS[p.publico] + detalleEstado, asunto + ' · ' + lista2.length + ' destinatarios');
     return procesarComunicado(c.id);
   };
   A.continuarComunicado = function (p, ses) { soloGestion(staffDe(ses)); return procesarComunicado(p.id); };
@@ -4384,7 +4395,11 @@ var Staff = (function () {
     if (publico) {
       var total = info.conteo[comTab];
       h += '<section class="card"><div class="card-h"><div class="sec-num">📢</div><h3>Nuevo comunicado para ' + esc(info.publicos[comTab]) + '</h3><span class="grow"></span><span class="badge b-gold" id="com-n">' + total + ' destinatarios</span></div>' +
-        (comTab === 'apoderados' ? '<div class="field"><label>Enviar a los apoderados de</label><div class="row" id="com-ciclos">' +
+        (comTab === 'apoderados' ? '<div class="field"><label>¿A qué apoderados?</label><div class="opt-cards" id="com-est" style="margin-bottom:14px">' +
+          '<label class="opt-card"><input type="radio" name="com-est" value="todos" checked><span>👨‍👩‍👧 Todos<small><b data-n="todos"></b> apoderados</small></span></label>' +
+          '<label class="opt-card"><input type="radio" name="com-est" value="pendientes"><span>⏳ No han completado la ficha<small><b data-n="pendientes"></b> · ideal para recordatorios</small></span></label>' +
+          '<label class="opt-card"><input type="radio" name="com-est" value="completadas"><span>✅ Ya completaron la ficha<small><b data-n="completadas"></b> · ficha enviada o matriculado</small></span></label></div></div>' +
+          '<div class="field"><label>De los ciclos</label><div class="row" id="com-ciclos">' +
           Object.keys(info.porCiclo).map(function (ci) { return '<label class="chip-check"><input type="checkbox" value="' + esc(ci) + '" checked><span>' + esc(ci) + ' (' + info.porCiclo[ci] + ')</span></label>'; }).join('') + '</div>' +
           '<label class="check" style="margin-top:10px"><input type="checkbox" id="com-sup"> <span>Incluir también al apoderado/a suplente</span></label></div>' : '') +
         '<div class="field" style="margin-top:12px"><label>Título del correo</label><div class="row" style="flex-wrap:nowrap"><span class="badge b-red" style="white-space:nowrap">📢 IMPORTANTE:</span><input id="com-asunto" maxlength="150" placeholder="Ej.: Cambio de fecha de matrícula Primer Ciclo"></div>' +
@@ -4405,7 +4420,9 @@ var Staff = (function () {
     } else {
       h += '<section class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table class="t"><thead><tr><th>Fecha</th><th>Para</th><th>Título</th><th>Enviados</th><th>Estado</th><th></th></tr></thead><tbody>' +
         (info.historial.length ? info.historial.map(function (x) {
-          return '<tr><td class="small nowrap">' + esc(x.fecha) + '</td><td>' + esc(info.publicos[x.publico] || x.publico) + '</td><td><b>' + esc(x.asunto) + '</b><div class="small muted">' + esc(x.autor) + '</div></td>' +
+          var fx = {}; try { fx = JSON.parse(x.filtro || '{}'); } catch (e2) { fx = {}; }
+          var sub = { pendientes: 'Ficha sin completar', completadas: 'Ficha completada' }[fx.estadoFicha] || '';
+          return '<tr><td class="small nowrap">' + esc(x.fecha) + '</td><td>' + esc(info.publicos[x.publico] || x.publico) + (sub ? '<div class="small muted">' + sub + '</div>' : '') + (fx.ciclos && fx.ciclos.length && fx.ciclos.length < 4 ? '<div class="small muted">' + esc(fx.ciclos.join(', ')) + '</div>' : '') + '</td><td><b>' + esc(x.asunto) + '</b><div class="small muted">' + esc(x.autor) + '</div></td>' +
             '<td>' + esc(x.enviados) + ' / ' + esc(x.total) + '</td><td>' + (x.restantes ? '<span class="badge b-gold">Faltan ' + x.restantes + '</span>' : '<span class="badge b-matriculada">Enviado</span>') + '</td>' +
             '<td>' + (x.restantes ? '<button class="btn sm gold" data-cont="' + esc(x.id) + '">▶ Continuar envío</button>' : '') + '</td></tr>';
         }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:30px">Aún no se han enviado comunicados.</td></tr>') + '</tbody></table></div></section>';
@@ -4423,14 +4440,37 @@ var Staff = (function () {
         buttons: [{ text: 'Entendido', value: true }] });
     }
     if (publico) {
+      var estadoSel = function () { var r = main().querySelector('[name=com-est]:checked'); return r ? r.value : 'todos'; };
       var filtro = function () {
         if (comTab !== 'apoderados') return {};
-        return { ciclos: UI.$$('#com-ciclos input:checked').map(function (x) { return x.value; }), suplentes: UI.$('#com-sup').checked };
+        return { ciclos: UI.$$('#com-ciclos input:checked').map(function (x) { return x.value; }), suplentes: UI.$('#com-sup').checked, estadoFicha: estadoSel() };
       };
-      if (comTab === 'apoderados') main().querySelector('#com-ciclos').onchange = function () {
-        var n = UI.$$('#com-ciclos input:checked').reduce(function (a, x) { return a + (info.porCiclo[x.value] || 0); }, 0);
-        UI.$('#com-n').textContent = n + ' destinatarios' + (UI.$('#com-sup').checked ? ' + suplentes' : '');
-      };
+      if (comTab === 'apoderados') {
+        var recontar = function () {
+          var cic = UI.$$('#com-ciclos input:checked').map(function (x) { return x.value; });
+          ['todos', 'pendientes', 'completadas'].forEach(function (k) {
+            var n = cic.reduce(function (a, ci) { return a + ((info.porEstado[ci] || {})[k] || 0); }, 0);
+            var el = main().querySelector('[data-n="' + k + '"]'); if (el) el.textContent = n;
+          });
+          UI.$$('#com-ciclos input').forEach(function (x) { x.nextElementSibling.textContent = x.value + ' (' + ((info.porEstado[x.value] || {})[estadoSel()] || 0) + ')'; });
+          var tot = cic.reduce(function (a, ci) { return a + ((info.porEstado[ci] || {})[estadoSel()] || 0); }, 0);
+          UI.$('#com-n').textContent = tot + ' destinatarios' + (UI.$('#com-sup').checked ? ' + suplentes' : '');
+        };
+        var anio = S.form.config.anio, cierre = String(S.form.config.fechaCierre || '').slice(0, 10).split('-').reverse().join('/');
+        var SUGERIDO = {
+          pendientes: ['Recordatorio: complete la ficha de matrícula ' + anio, 'Estimada familia:\nAún no hemos recibido la ficha de matrícula ' + anio + ' de su pupilo/a. Le recordamos ingresar a la plataforma con el RUT del estudiante y su clave, completar los datos y presionar «Enviar matrícula».' + (cierre ? '\nEl plazo para completarla vence el ' + cierre + '.' : '') + '\nSi olvidó su clave, puede recuperarla en la misma plataforma («¿Olvidó su clave?»).\n\nMuchas gracias.'],
+          completadas: ['Gracias por completar la ficha de matrícula ' + anio, 'Estimada familia:\nMuchas gracias por completar la ficha de matrícula ' + anio + '. Le recordamos que la matrícula se formaliza de manera presencial en el establecimiento, en la fecha y horario indicados para su ciclo.\n\nLos esperamos.']
+        };
+        var autoTexto = '';
+        main().querySelector('#com-est').onchange = function () {
+          var s = SUGERIDO[estadoSel()], a = UI.$('#com-asunto'), m = UI.$('#com-msg');
+          if (s && (!a.value.trim() || a.value === autoTexto)) { a.value = s[0]; m.value = s[1]; autoTexto = s[0]; }
+          else if (!s && a.value === autoTexto) { a.value = ''; m.value = ''; autoTexto = ''; }
+          recontar();
+        };
+        main().querySelector('#com-ciclos').onchange = recontar; UI.$('#com-sup').onchange = recontar;
+        recontar();
+      }
       UI.$('#com-img-btn').onclick = function () { UI.$('#com-img').click(); };
       UI.$('#com-img').onchange = async function () {
         var file = this.files[0]; if (!file) return;
