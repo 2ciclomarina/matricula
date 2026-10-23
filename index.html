@@ -565,6 +565,28 @@ tr.total td { background: var(--navy); color: #fff; font-weight: 800; }
 .aviso-formal b.t { color: var(--navy); }
 [data-regla].seg { flex-wrap: wrap; }
 
+/* edición simultánea */
+.presencia { background: #f3e8fd; border: 1.5px solid #d6bdf3; color: #5b2a8f; border-radius: 12px; padding: 10px 14px; margin: 0 0 16px; font-size: 14px; }
+.field.recien { animation: recien 2.5s ease; border-radius: 10px; }
+@keyframes recien { 0% { background: #fff4d6; box-shadow: 0 0 0 6px #fff4d6; } 100% { background: transparent; box-shadow: 0 0 0 6px transparent; } }
+/* avance del curso */
+.avance-top { display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: center; }
+.donut { --p: 0; width: 180px; height: 180px; border-radius: 50%; margin: auto; display: grid; place-items: center; background: conic-gradient(var(--ok) calc(var(--p) * 1%), #edf0f6 0); }
+.donut span { width: 136px; height: 136px; border-radius: 50%; background: #fff; display: grid; place-items: center; text-align: center; font-family: var(--font-d); font-size: 34px; font-weight: 700; color: var(--ink); line-height: 1; }
+.donut small { display: block; font-family: var(--font); font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 4px; }
+.barra-grupo { display: grid; grid-template-columns: 160px minmax(0, 1fr) 70px; gap: 10px; align-items: center; margin-bottom: 8px; font-size: 14px; cursor: pointer; }
+.barra-grupo .bar { width: 100%; height: 16px; }
+.barra-grupo:hover b { text-decoration: underline; }
+.listas-avance { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; align-items: start; }
+.listas-avance > .card { margin-top: 0; }
+.nombre-item { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
+.nombre-item:hover { background: var(--sky-2); border-color: var(--line); }
+.nombre-item .grow { min-width: 0; }
+.nombre-item b { color: var(--ink); }
+.mini-bar { width: 70px; height: 7px; background: #edf0f6; border-radius: 99px; overflow: hidden; flex: none; }
+.mini-bar i { display: block; height: 100%; background: var(--blue-2); }
+@media (max-width: 760px) { .avance-top, .listas-avance { grid-template-columns: 1fr; } .barra-grupo { grid-template-columns: 110px minmax(0, 1fr) 56px; } }
+
 </style>
 </head>
 <body>
@@ -622,7 +644,7 @@ function createCore_(env) {
   };
   var CICLOS = ['Preescolar', 'Primer Ciclo', 'Segundo Ciclo', 'Enseñanza Media', 'Otro'];
   // curso = nivel al que se matricula (año de la matrícula) · cursoAnterior = curso de procedencia
-  var FICHA_META = ['rut', 'numeroMatricula', 'curso', 'cursoAnterior', 'estado', 'editFamilia', 'editFuncionario', 'fechaLimite', 'bienvenidaEnviada', 'tipoMatricula', 'fechaActualizacion', 'claveHash', 'debeCambiarClave', 'videoVisto', 'fechaEnvio',
+  var FICHA_META = ['rut', 'numeroMatricula', 'curso', 'cursoAnterior', 'estado', 'editFamilia', 'editFuncionario', 'fechaLimite', 'bienvenidaEnviada', 'tipoMatricula', 'numeroProvisorio', 'fechaActualizacion', 'claveHash', 'debeCambiarClave', 'videoVisto', 'fechaEnvio',
     'ultimaModificacion', 'modificadoPor', 'matriculadoPorNombre', 'matriculadoPorRut', 'fechaMatricula',
     'aceptaciones', 'fechaIngreso', 'fechaRetiro'];
   var HEADERS = {
@@ -637,7 +659,7 @@ function createCore_(env) {
     Bitacora: ['fecha', 'usuario', 'accion', 'detalle']
   };
   var TIPOS_CAMPO = ['texto', 'parrafo', 'numero', 'fecha', 'email', 'telefono', 'rut', 'lista', 'si_no', 'nivel_pais', 'multiple'];
-  var VERSION_CAMPOS = 3; // sube cuando cambian los datos predeterminados de la ficha (ver migrarCampos)
+  var VERSION_CAMPOS = 4; // sube cuando cambian los datos predeterminados de la ficha (ver migrarCampos)
 
   /* Tabla de equivalencia educacional – Boletín Censal N°15 (INE, Censo 2024).
      Cada país tiene 12 posiciones: 1° Básico … 8° Básico, 1° Medio … 4° Medio en Chile ('' = sin equivalencia). */
@@ -691,6 +713,7 @@ function createCore_(env) {
     numInicioSegundoCiclo: '401',
     numInicioMedia: '701',
     calendario: '[]',           // días y horarios de matrícula por ciclo (JSON)
+    numerosProvisorios: 'SI',   // el N° asignado al matricular es provisorio hasta que el Equipo de Gestión confirme los definitivos
     permitirRepitentes: 'NO',  // el Equipo de Gestión habilita (según cupos) matricular repitentes en el mismo curso
     promocionReglas: '',        // por nivel de origen: «letra» (1° Básico A → 2° Básico A) o «nivel» (se reagrupan después)
     portadaEtiqueta: 'Admisión y matrículas',   // textos de la portada (pestaña «Portada» del Equipo de Gestión)
@@ -868,6 +891,7 @@ function createCore_(env) {
     o.nivel = nivelDe(f.curso); o.ciclo = cicloDe(f.curso);
     o.editFuncionario = si(f.editFuncionario);
     o.tipoMatricula = tipoDe(f);
+    o.numeroProvisorio = !!str(f.numeroMatricula).trim() && si(f.numeroProvisorio);
     return o;
   }
   function usuarioPublico(u) {
@@ -964,6 +988,16 @@ function createCore_(env) {
       out[k] = v;
     }
     return out;
+  }
+  // «¿Vive en la misma dirección que el estudiante?» = Sí → se copia la dirección y comuna del estudiante.
+  function completarDirecciones(patch, f) {
+    var m = {}, k;
+    for (k in f) m[k] = f[k];
+    for (k in patch) m[k] = patch[k];
+    if (m.apo_misma_direccion === 'Sí' && ('apo_misma_direccion' in patch || 'est_direccion' in patch || 'est_comuna' in patch || !str(m.apo_direccion).trim())) {
+      patch.apo_direccion = str(m.est_direccion); patch.apo_comuna = str(m.est_comuna);
+    }
+    return patch;
   }
   function mezclarAceptaciones(f, nuevas, quien) {
     var acc = parseJSON(f.aceptaciones, {});
@@ -1082,8 +1116,9 @@ function createCore_(env) {
       [S2, 'apo_parentesco', 'Parentesco con el estudiante', 'lista', PAR, true, true],
       [S2, 'apo_celular', 'Teléfono celular', 'telefono', '', true, true],
       [S2, 'apo_email', 'Correo electrónico', 'email', '', true, true],
-      [S2, 'apo_direccion', 'Dirección (si es distinta a la del estudiante)', 'texto', '', false, true],
-      [S2, 'apo_comuna', 'Comuna', 'texto', '', false, true],
+      [S2, 'apo_misma_direccion', '¿El apoderado/a vive en la misma dirección que el estudiante?', 'si_no', '', true, true, 'Si responde «Sí», se usa automáticamente la dirección del estudiante.'],
+      [S2, 'apo_direccion', 'Dirección del apoderado/a', 'texto', '', true, true, '', false, 'apo_misma_direccion=No'],
+      [S2, 'apo_comuna', 'Comuna del apoderado/a', 'texto', '', true, true, '', false, 'apo_misma_direccion=No'],
       [S2, 'apo_ocupacion', 'Ocupación', 'texto', '', false, true],
       [S2, 'apo_escolaridad', 'Nivel de escolaridad', 'lista', 'Básica incompleta,Básica completa,Media incompleta,Media completa,Técnico profesional,Universitaria,Postgrado', false, true],
       [S3, 'sup_nombre', 'Nombre completo', 'texto', '', false, true, 'Si registra un apoderado/a suplente, se pedirán sus datos de contacto.'],
@@ -1150,7 +1185,8 @@ function createCore_(env) {
       // datos cuya definición cambió en cada versión (tipo, opciones, etiqueta u obligatoriedad)
       var CAMBIOS = {
         2: ['est_nacionalidad', 'sup_rut', 'sup_parentesco', 'sup_celular', 'mad_nombre', 'mad_celular', 'pad_nombre', 'pad_celular', 'otr_beneficios', 'sup_nombre'],
-        3: ['est_colegio_procedencia', 'sal_medicamentos', 'sal_diagnostico']
+        3: ['est_colegio_procedencia', 'sal_medicamentos', 'sal_diagnostico'],
+        4: ['apo_direccion', 'apo_comuna']
       }, CAMBIAN = [];
       for (var v = desde + 1; v <= VERSION_CAMPOS; v++) CAMBIAN = CAMBIAN.concat(CAMBIOS[v] || []);
       camposIniciales().forEach(function (c) {
@@ -1165,6 +1201,9 @@ function createCore_(env) {
         // quienes ya registraron nombre de madre/padre quedan con «Registrar datos…» para no perder lo ingresado
         db.update('Fichas', function (f) { return str(f.mad_nombre).trim() && !str(f.mad_situacion).trim(); }, { mad_situacion: 'Registrar datos de la madre' });
         db.update('Fichas', function (f) { return str(f.pad_nombre).trim() && !str(f.pad_situacion).trim(); }, { pad_situacion: 'Registrar datos del padre' });
+      }
+      if (desde < 4) { // quien ya registró una dirección distinta del apoderado queda con «No» (vive en otra dirección)
+        db.update('Fichas', function (f) { return str(f.apo_direccion).trim() && !str(f.apo_misma_direccion).trim() && norm(f.apo_direccion) !== norm(f.est_direccion); }, { apo_misma_direccion: 'No' });
       }
       if (desde < 3) { // quien ya escribió medicamentos queda con «Sí» en la nueva pregunta
         db.update('Fichas', function (f) { return str(f.sal_medicamentos).trim() && !/^no\b/i.test(str(f.sal_medicamentos).trim()) && !str(f.sal_toma_medicamentos).trim(); }, { sal_toma_medicamentos: 'Sí' });
@@ -1472,7 +1511,7 @@ function createCore_(env) {
     var f = familiaDe(ses);
     if (bloqueadaParaFamilia(f)) fail(MSG_BLOQUEO);
     exigirVentana(f);
-    var patch = filtrarDatos(p.datos, f);
+    var patch = completarDirecciones(filtrarDatos(p.datos, f), f);
     if (p.aceptaciones) patch.aceptaciones = JSON.stringify(mezclarAceptaciones(f, p.aceptaciones, 'Familia'));
     if (!f.estado || f.estado === 'pendiente') patch.estado = 'en_proceso';
     patch.ultimaModificacion = env.now(); patch.modificadoPor = 'Familia';
@@ -1485,7 +1524,7 @@ function createCore_(env) {
     if (bloqueadaParaFamilia(f)) fail(MSG_BLOQUEO);
     exigirVentana(f);
     var actualizacion = enActualizacion(f);
-    var patch = filtrarDatos(p.datos, f), acc = mezclarAceptaciones(f, p.aceptaciones || {}, 'Familia');
+    var patch = completarDirecciones(filtrarDatos(p.datos, f), f), acc = mezclarAceptaciones(f, p.aceptaciones || {}, 'Familia');
     var merged = {}, k;
     for (k in f) merged[k] = f[k];
     for (k in patch) merged[k] = patch[k];
@@ -1523,7 +1562,7 @@ function createCore_(env) {
   A.guardarFicha = function (p, ses) {
     var u = staffDe(ses), f = fichaAccesible(u, p.rut);
     if (!puedeEditarFuncionario(u, f)) fail('La ficha ya está matriculada. Solo el Equipo de Gestión puede habilitar su edición.');
-    var patch = filtrarDatos(p.datos, false), moverse = false;
+    var patch = completarDirecciones(filtrarDatos(p.datos, false), f), moverse = false;
     if (p.curso !== undefined && limpiarCurso(p.curso) && norm(p.curso) !== norm(f.curso)) { patch.curso = limpiarCurso(p.curso); moverse = true; }
     if (p.cursoAnterior !== undefined && norm(p.cursoAnterior) !== norm(f.cursoAnterior)) { patch.cursoAnterior = limpiarCurso(p.cursoAnterior); moverse = true; }
     if (p.numeroMatricula !== undefined && str(p.numeroMatricula).trim() !== str(f.numeroMatricula)) {
@@ -1590,7 +1629,7 @@ function createCore_(env) {
     var falta = faltantes(f, false);
     if (falta.length) return { matriculado: false, faltantes: falta };
     var numero = validarNumero(p.numero, f.rut) || numeroSugerido(f);
-    updFicha(f.rut, { estado: 'matriculada', numeroMatricula: numero, editFamilia: '', editFuncionario: '', matriculadoPorNombre: u.nombre,
+    updFicha(f.rut, { estado: 'matriculada', numeroMatricula: numero, numeroProvisorio: siNo(si(getConfig().numerosProvisorios)), editFamilia: '', editFuncionario: '', matriculadoPorNombre: u.nombre,
       matriculadoPorRut: rutFmt(u.rut), fechaMatricula: env.now(), ultimaModificacion: env.now(), modificadoPor: u.nombre });
     log(u.nombre, 'Matrícula registrada N° ' + numero, rutFmt(f.rut) + ' ' + f.curso);
     var copia = p.enviarCopia === false ? false : correoCopiaFicha(findFicha(f.rut), 'matricula');
@@ -2277,7 +2316,70 @@ function createCore_(env) {
     log(u.nombre, 'Comunicado a ' + PUBLICOS[p.publico] + detalleEstado, asunto + ' · ' + lista2.length + ' destinatarios');
     return procesarComunicado(c.id);
   };
-  A.continuarComunicado = function (p, ses) { soloGestion(staffDe(ses)); return procesarComunicado(p.id); };
+  A.continuarComunicado = function (p, ses) {
+    var u = staffDe(ses), c = db.all('Comunicados').filter(function (x) { return x.id === p.id; })[0];
+    if (u.rol !== 'gestion' && (!c || c.autor !== u.nombre)) fail('Solo puede continuar los envíos que usted inició.');
+    return procesarComunicado(p.id);
+  };
+  // Recordatorio de un docente o asistente a los apoderados de SUS fichas (todas, sin completar o completadas).
+  A.enviarRecordatorioCurso = function (p, ses) {
+    var u = staffDe(ses), asunto = str(p.asunto).trim(), mensaje = str(p.mensaje).trim();
+    if (asunto.length < 3) fail('Escriba el título del correo.');
+    if (!mensaje) fail('Escriba el mensaje.');
+    var ruts = p.ruts ? lista(p.ruts).map(rutKey) : null, vistos = {}, emails = [];
+    fichasVisibles(u).forEach(function (f) {
+      if (f.estado === 'retirado' || (ruts && ruts.indexOf(rutKey(f.rut)) < 0)) return;
+      var completa = f.estado === 'enviada' || f.estado === 'matriculada';
+      if (p.estadoFicha === 'pendientes' && completa) return;
+      if (p.estadoFicha === 'completadas' && !completa) return;
+      var e = str(f.apo_email).trim().toLowerCase();
+      if (emailValido(e) && !vistos[e]) { vistos[e] = 1; emails.push(e); }
+    });
+    if (!emails.length) fail('No hay apoderados con correo para enviar.');
+    var c = { id: env.uuid(), fecha: env.now(), publico: 'apoderados', filtro: JSON.stringify({ estadoFicha: p.estadoFicha || 'todos', grupo: str(p.grupo) || 'Mis cursos' }), asunto: asunto.slice(0, 150),
+      mensaje: mensaje.slice(0, 8000), imagenUrl: '', autor: u.nombre, total: String(emails.length), enviados: '0', estado: 'pendiente', pendientes: JSON.stringify(emails) };
+    db.insert('Comunicados', c);
+    log(u.nombre, 'Recordatorio a apoderados (' + (p.grupo || 'mis cursos') + ')', asunto + ' · ' + emails.length + ' destinatarios');
+    return procesarComunicado(c.id);
+  };
+
+  /* Números de matrícula definitivos: correlativos desde PreKínder a 4° Medio (por curso y apellido). Solo cambia el N°. */
+  A.numerarDefinitivos = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    var orden = ordenCursos(), todas = db.all('Fichas').filter(function (f) { return f.rut && f.estado === 'matriculada' && str(f.numeroMatricula).trim(); });
+    var lista3 = p.modo === 'provisorios' ? todas.filter(function (f) { return si(f.numeroProvisorio); }) : todas;
+    if (!lista3.length) fail('No hay matrículas para numerar.');
+    lista3.sort(compararFichas(orden));
+    var desde = parseInt(p.desde, 10) || 1;
+    if (p.modo === 'provisorios') {
+      var maxDef = 0;
+      todas.forEach(function (f) { if (!si(f.numeroProvisorio)) { var n = parseInt(str(f.numeroMatricula).replace(/\D/g, ''), 10); if (n > maxDef) maxDef = n; } });
+      desde = Math.max(desde, maxDef + 1);
+    }
+    var n = desde, claves = {};
+    lista3.forEach(function (f) { claves[rutKey(f.rut)] = String(n++); });
+    db.all('Fichas').forEach(function (f) {
+      var k = rutKey(f.rut);
+      if (claves[k]) updFicha(f.rut, { numeroMatricula: claves[k], numeroProvisorio: '' });
+    });
+    log(u.nombre, 'Números de matrícula definitivos', lista3.length + ' fichas · del ' + desde + ' al ' + (n - 1));
+    return { numerados: lista3.length, desde: desde, hasta: n - 1 };
+  };
+
+  /* Presencia: quién más está viendo o editando la misma ficha en este momento (para avisar y no pisar cambios). */
+  A.presencia = function (p, ses) {
+    var f, quien;
+    if (ses.tipo === 'familia') { f = familiaDe(ses); quien = 'Familia'; }
+    else { var u = staffDe(ses); f = fichaAccesible(u, p.rut); quien = u.nombre; }
+    var k = 'pr_' + rutKey(f.rut), ahora = Date.now(), mapa = env.session.get(k) || {};
+    if (typeof mapa === 'string') mapa = parseJSON(mapa, {});
+    mapa[quien] = ahora;
+    var otros = [];
+    Object.keys(mapa).forEach(function (q) { if (ahora - mapa[q] > 120000) delete mapa[q]; else if (q !== quien) otros.push({ quien: q, segundos: Math.round((ahora - mapa[q]) / 1000) }); });
+    env.session.put(k, mapa, 300);
+    var s = JSON.stringify(f), h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; // huella: cambia con cualquier dato guardado
+    return { otros: otros, huella: String(h), ultimaModificacion: f.ultimaModificacion, modificadoPor: f.modificadoPor };
+  };
   A.previsualizarComunicado = function (p, ses) { // devuelve el HTML del correo para mostrarlo antes de enviar
     soloGestion(staffDe(ses));
     var html = null, envOrig = env.mail;
@@ -2711,6 +2813,34 @@ var UI = (function () {
         s.campos.map(function (c) { return campoHtml(c, datos[c.id], editable(c), datos); }).join('') + '</div></section>';
     }).join('');
   }
+  /* Edición simultánea: incorpora en pantalla los datos que otra persona guardó, sin tocar los que
+     uno está escribiendo (pendientes de guardar) ni el campo donde está el cursor. Devuelve qué cambió. */
+  function refrescarCampos(root, campos, nuevos, pend, editable) {
+    var cambiados = [];
+    campos.forEach(function (c) {
+      if (pend && Object.prototype.hasOwnProperty.call(pend, c.id)) return;
+      var w = root.querySelector('[data-wrap="' + CSS.escape(c.id) + '"]');
+      if (!w || w.contains(document.activeElement)) return;
+      var actual = String(leer(w)[c.id] || ''), nv = String(nuevos[c.id] === undefined || nuevos[c.id] === null ? '' : nuevos[c.id]);
+      if (c.tipo === 'telefono') { actual = actual ? CoreUtil.normTel(actual) : ''; nv = nv ? CoreUtil.normTel(nv) : ''; }
+      if (actual === nv) return;
+      var tmp = document.createElement('div');
+      tmp.innerHTML = campoHtml(c, nuevos[c.id], editable(c), nuevos);
+      var nw = tmp.firstElementChild;
+      nw.classList.add('recien');
+      w.replaceWith(nw);
+      cambiados.push(c.etiqueta);
+    });
+    aplicarCondiciones(root);
+    return cambiados;
+  }
+  function presenciaHtml(otros, esFamilia) {
+    if (!otros || !otros.length) return '';
+    var nombres = otros.map(function (o) { return o.quien === 'Familia' ? 'la familia' : o.quien; });
+    return '<div class="presencia">👀 ' + (esFamilia ? 'Personal del establecimiento está revisando esta ficha en este momento.' :
+      'En este momento también está en esta ficha: <b>' + esc(nombres.join(', ')) + '</b>.') + ' Los cambios de cada persona se guardan por separado y se actualizan aquí automáticamente.</div>';
+  }
+
   function leer(root) {
     var o = {};
     $$('[data-field]', root).forEach(function (el) {
@@ -2923,7 +3053,7 @@ var UI = (function () {
   return {
     esc: esc, $: $, $$: $$, si: si, sleep: sleep, debounce: debounce, api: api, loading: loading, done: done, toast: toast,
     modal: modal, success: success, error: error, info: info, confirm: confirm, intentar: intentar, faltantes: faltantes, resaltar: resaltar,
-    formHtml: formHtml, compactar: compactar, calendarioHtml: calendarioHtml, carruselHtml: carruselHtml, activarCarrusel: activarCarrusel, imgSrc: imgSrc, comprimirImagen: comprimirImagen, leer: leer, enlazar: enlazar, validar: validar, marcarErrores: marcarErrores, secciones: secciones,
+    formHtml: formHtml, refrescarCampos: refrescarCampos, presenciaHtml: presenciaHtml, compactar: compactar, calendarioHtml: calendarioHtml, carruselHtml: carruselHtml, activarCarrusel: activarCarrusel, imgSrc: imgSrc, comprimirImagen: comprimirImagen, leer: leer, enlazar: enlazar, validar: validar, marcarErrores: marcarErrores, secciones: secciones,
     aISO: aISO, fechaLarga: fechaLarga, iniciales: iniciales, nombreEst: nombreEst, nombreApo: nombreApo, badgeEstado: badgeEstado,
     archivoBase64: archivoBase64, leerExcel: leerExcel
   };
@@ -2957,7 +3087,7 @@ var Doc = (function () {
     return '<div class="doc-head"><img src="insignia.jpg" alt="Insignia">' +
       '<div class="dh-c"><div class="col">' + esc(cfg.nombreColegio) + '</div><div class="sub">' + esc([cfg.direccion, cfg.ciudad, cfg.rbd ? 'RBD ' + cfg.rbd : '', cfg.telefono].filter(Boolean).join(' · ')) + '</div>' +
       '<div class="tit">' + esc(titulo) + '</div></div>' +
-      '<div class="dh-r"><div><b>N° matrícula</b><span style="font-size:12px;font-weight:bold;color:#12347a">' + esc(f.numeroMatricula || '______') + '</span></div><div><b>Año escolar</b><span>' + esc(cfg.anio) + '</span></div>' +
+      '<div class="dh-r"><div><b>N° matrícula</b><span style="font-size:12px;font-weight:bold;color:#12347a">' + esc(f.numeroMatricula || '______') + (f.numeroMatricula && f.numeroProvisorio ? ' <small style="font-size:8px;color:#8a5d00">(provisorio)</small>' : '') + '</span></div><div><b>Año escolar</b><span>' + esc(cfg.anio) + '</span></div>' +
       '<div><b>RUT</b><span>' + esc(f.rut) + '</span></div><div><b>Curso</b><span>' + esc(f.curso) + '</span></div><div><b>Fecha</b><span>' + esc(UI.fechaLarga((f.fechaMatricula || '').slice(0, 10)) || new Date().toLocaleDateString('es-CL')) + '</span></div></div></div>';
   }
   function valor(c, f) {
@@ -3104,9 +3234,33 @@ var Familia = (function () {
 
   async function iniciar() {
     var r = await Promise.all([UI.api('formulario'), UI.api('miFicha')]);
-    S.form = r[0]; F = r[1]; pend = {}; pendAcc = {};
+    S.form = r[0]; F = r[1]; pend = {}; pendAcc = {}; huella = '';
     render();
+    if (presTimer) clearInterval(presTimer);
+    presTimer = setInterval(latido, 45000); latido();
   }
+
+  /* Edición simultánea: avisa si el personal está en la ficha e incorpora lo que guardó, sin tocar lo que la familia está escribiendo. */
+  var presTimer = null, huella = '';
+  async function latido() {
+    if (!F || document.hidden || !UI.$('#tab-ficha')) return;
+    if (bloqueada() && !actualizando()) return;
+    var r, nf;
+    try { r = await UI.api('presencia', {}); } catch (e) { if (e.userMsg && !e.red) { clearInterval(presTimer); presTimer = null; } return; }
+    var box = UI.$('#presencia'); if (box) box.innerHTML = UI.presenciaHtml(r.otros, true);
+    var previa = huella; huella = r.huella;
+    if (!previa || previa === r.huella || guardando) return;
+    try { nf = await UI.api('miFicha'); } catch (e) { return; }
+    if (guardando) { huella = previa; return; }
+    Object.keys(pend).forEach(function (k) { nf[k] = pend[k]; });
+    Object.keys(pendAcc).forEach(function (k) { if (pendAcc[k]) nf.aceptaciones[k] = nf.aceptaciones[k] || { fecha: 'recién', por: 'Familia' }; else delete nf.aceptaciones[k]; });
+    var antes = bloqueada(); F = nf;
+    if (bloqueada() !== antes) return render();
+    var cambiados = UI.refrescarCampos(UI.$('#tab-ficha'), S.form.campos.filter(function (c) { return !/uso interno/i.test(c.seccion); }), nf, pend, editable);
+    pintarProgreso();
+    if (cambiados.length) UI.toast('🔄 El establecimiento actualizó: ' + cambiados.slice(0, 3).join(', ') + (cambiados.length > 3 ? ' y ' + (cambiados.length - 3) + ' más' : ''), 'ok');
+  }
+  function numTxt() { return F.numeroMatricula ? esc(F.numeroMatricula) + (F.numeroProvisorio ? ' (provisorio)' : '') : ''; }
 
   function progreso() {
     var mapa = CoreUtil.mapaCampos(S.form.campos);
@@ -3163,8 +3317,8 @@ var Familia = (function () {
       '<section class="card welcome"><div class="ring" id="ring" style="--p:0"><span>0%</span></div><div class="grow" style="position:relative;z-index:1">' +
       '<div class="eyebrow">Ficha de matrícula ' + esc(cfg.anio) + '</div>' +
       '<h2>' + esc(nombre()) + '</h2><div class="row small"><span class="badge b-blue">RUT ' + esc(F.rut) + '</span><span class="badge b-gold">Nivel ' + esc(cfg.anio) + ': ' + esc(F.curso) + '</span>' +
-      (F.numeroMatricula ? '<span class="badge b-gold">N° matrícula ' + esc(F.numeroMatricula) + '</span>' : '') + '<span id="est-badge">' + UI.badgeEstado(F.estado) + '</span></div>' +
-      '<p style="margin:12px 0 0">' + esc(cfg.mensajeBienvenida) + '</p></div></section>' +
+      (F.numeroMatricula ? '<span class="badge b-gold">N° matrícula ' + numTxt() + '</span>' : '') + '<span id="est-badge">' + UI.badgeEstado(F.estado) + '</span></div>' +
+      '<p style="margin:12px 0 0">' + esc(cfg.mensajeBienvenida) + '</p></div></section><div id="presencia"></div>' +
       (F.estado !== 'matriculada' && F.estado !== 'retirado' ? '<div class="aviso-formal"><div class="ico">📌</div><div>' + avisoTexto() + '</div></div>' : '') +
       (act ? '<div class="update-banner"><div class="ico">✏️</div><div><b class="t">El establecimiento solicita actualizar ' + (ped ? 'estos datos' : 'los datos de la ficha') + '</b><br>' +
         '<span class="muted">Los datos ya registrados se mantienen: solo modifique lo que haya cambiado (dirección, teléfono, correo, apoderado/a suplente, etc.) y presione «Enviar datos actualizados».</span>' +
@@ -3174,7 +3328,7 @@ var Familia = (function () {
         (w.motivo === 'antes' ? 'Podrá revisar los datos, pero completarlos y enviarlos se habilitará en esa fecha.' : 'Si necesita completarla o corregirla, comuníquese con el establecimiento o solicite una apertura.') + '</span>' +
         (w.motivo !== 'antes' ? botonSolicitud() : '') + '</div></div>' :
       (w.especial && !lock ? '<div class="update-banner"><div class="ico">⏰</div><div><b class="t">Plazo especial para su ficha: hasta el ' + esc(w.hastaTxt) + '</b><br><span class="muted">El establecimiento le otorgó un plazo para completar la matrícula.</span></div></div>' : '') +
-      (lock ? '<div class="lock-banner"><div class="ico">🔒</div><div><b>' + (F.estado === 'matriculada' ? 'Estudiante matriculado/a' + (F.numeroMatricula ? ' · N° ' + esc(F.numeroMatricula) : '') : 'Ficha enviada' + (F.fechaEnvio ? ' el ' + esc(F.fechaEnvio) : '')) + '</b><br>' +
+      (lock ? '<div class="lock-banner"><div class="ico">🔒</div><div><b>' + (F.estado === 'matriculada' ? 'Estudiante matriculado/a' + (F.numeroMatricula ? ' · N° ' + numTxt() : '') : 'Ficha enviada' + (F.fechaEnvio ? ' el ' + esc(F.fechaEnvio) : '')) + '</b><br>' +
         '<span class="muted">Los datos ya fueron registrados y <b>no pueden modificarse</b>. Si necesita corregir algo, solicite una corrección: el Equipo de Gestión la revisará y le avisará por correo.</span>' + (enviada || F.estado === 'matriculada' ? botonSolicitud() : '') + '</div></div>' : '')) +
       '<div class="subtabs"><button class="subtab" data-tab="ficha">📋 Ficha de matrícula</button><button class="subtab" data-tab="docs">📚 Documentos del colegio <span class="badge b-blue" id="cnt-docs"></span></button></div>' +
       '<div id="tab-ficha"><p class="muted small" style="margin:-4px 0 12px">Los datos marcados con <span class="req">*</span> son obligatorios. Los campos en gris solo pueden ser modificados por el establecimiento.</p>' +
@@ -3254,6 +3408,7 @@ var Familia = (function () {
     pend = {}; pendAcc = {}; guardando = true; marcar('saving');
     try {
       var r = await UI.api('guardarBorrador', { datos: datos, aceptaciones: Object.keys(acc).length ? acc : null });
+      F.ultimaModificacion = r.guardado; F.modificadoPor = 'Familia';
       if (F.estado === 'pendiente') { F.estado = 'en_proceso'; UI.$('#est-badge').innerHTML = UI.badgeEstado(F.estado); }
       marcar('saved', '✓ Guardado automáticamente · ' + String(r.guardado).slice(11));
     } catch (e) {
@@ -3285,7 +3440,7 @@ var Familia = (function () {
     var ok = await UI.confirm(actualizando() ? '¿Enviar los datos actualizados?' : '¿Enviar la matrícula?', 'Revise que los datos estén correctos. Una vez enviada, <b>la ficha no podrá modificarse</b>, salvo autorización del equipo del establecimiento.' + (actualizando() ? '' : '<br><br>' + avisoTexto()), 'Sí, enviar', 'ok');
     if (!ok) return;
     await vaciar();
-    var r = await UI.intentar(function () { return UI.api('enviarFicha', { datos: datos, aceptaciones: acc }); }, 'Guardando la ficha…');
+    var r = await UI.intentar(function () { return UI.api('enviarFicha', { datos: {}, aceptaciones: acc }); }, 'Guardando la ficha…');
     if (!r) return;
     if (!r.enviado) { UI.marcarErrores(root, r.faltantes); return UI.faltantes(r.faltantes, irA); }
     F = await UI.api('miFicha');
@@ -3327,13 +3482,14 @@ var Staff = (function () {
   function selAnterior(id, actual, dis) { return '<select id="' + id + '"' + (dis ? ' disabled' : '') + '>' + opciones(S.form.cursos, actual, 'Estudiante nuevo (sin curso anterior)') + '</select>'; }
   function puedoEditar(f) { return gestion() || f.estado !== 'matriculada' || f.editFuncionario; }
   function main() { return UI.$('#main'); }
+  function numHtml(f, vacio) { return esc(f.numeroMatricula || vacio || '—') + (f.numeroMatricula && f.numeroProvisorio ? ' <span class="badge b-gold" title="N° provisorio: el Equipo de Gestión confirmará los números definitivos">provisorio</span>' : ''); }
   function nombreCompleto(f) { return [f.est_nombres, f.est_apellido_paterno, f.est_apellido_materno].filter(Boolean).join(' '); }
 
   /* ------------------------------ estructura ------------------------------ */
   async function iniciar() {
     P = S.perfil;
     S.form = await UI.api('formulario');
-    var nav = [['fichas', '📋', 'Fichas de matrícula'], ['estadisticas', '📊', 'Resumen estadístico']];
+    var nav = [['fichas', '📋', 'Fichas de matrícula'], ['avance', '📈', gestion() ? 'Avance por curso' : 'Avance de mi curso'], ['estadisticas', '📊', 'Resumen estadístico']];
     var navG = [['solicitudes', '📨', 'Solicitudes'], ['comunicaciones', '📢', 'Comunicaciones'], ['portada', '🖼', 'Portada'], ['usuarios', '👥', 'Usuarios'], ['formulario', '🧩', 'Datos de la ficha'], ['documentos', '📚', 'Reglamentos y cartas'], ['config', '⚙️', 'Configuración'], ['bitacora', '🕘', 'Bitácora']];
     function item(n) { return '<button class="nav-item" data-nav="' + n[0] + '"><span class="ni">' + n[1] + '</span>' + n[2] + '</button>'; }
     UI.$('#app').innerHTML = App.topbar(P.nombre, P.rolNombre + (gestion() ? '' : ' · ' + (P.cursos.join(', ') || 'sin cursos asignados'))) +
@@ -3348,13 +3504,14 @@ var Staff = (function () {
   async function ir(v, arg) {
     if (v === 'tutorial') return App.tutorial();
     if (ed && ed.pend && Object.keys(ed.pend).length) await guardarAuto();
-    vista = v; ed = v === 'editor' ? ed : null;
+    vista = v; ed = v === 'editor' ? ed : null; detenerPresencia();
     UI.$$('.nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.nav === (v === 'editor' ? 'fichas' : v)); });
     main().innerHTML = '<div class="empty"><div class="spinner" style="margin:auto"></div></div>';
     try {
       if (v === 'fichas') await vFichas(arg);
       else if (v === 'editor') await vEditor(arg);
       else if (v === 'estadisticas') await vStats();
+      else if (v === 'avance') await vAvance(arg);
       else if (v === 'usuarios') await vUsuarios();
       else if (v === 'formulario') await vFormulario();
       else if (v === 'documentos') await vDocumentos();
@@ -3379,7 +3536,7 @@ var Staff = (function () {
     if (cursos.indexOf(filtro.curso) < 0) filtro.curso = '';
     main().innerHTML = UI.calendarioHtml(S.form.config, '') + '<div class="page-h acciones"><div><div class="eyebrow">Proceso de matrícula ' + esc(anio) + '</div><h2>Fichas de matrícula</h2></div><span class="badge b-blue">' + fichas.length + ' estudiantes</span><span class="grow"></span>' +
       '<button class="btn gold" data-a="nueva">➕ Nuevo estudiante</button>' +
-      (gestion() ? '<button class="btn ghost" data-a="organizacion">⚙️ Organización ' + esc(anio) + '</button><button class="btn ghost sec" data-a="habilitar">🔓 Habilitar edición</button><button class="btn ghost sec" data-a="importar">📥 Cargar / actualizar base</button><button class="btn ghost sec" data-a="descargar">⬇ Descargar base de datos</button><button class="btn bad sec" data-a="borrar-todo" title="Eliminar todas las fichas">🗑 Eliminar todas las fichas</button>' :
+      (gestion() ? '<button class="btn ghost" data-a="organizacion">⚙️ Organización ' + esc(anio) + '</button><button class="btn ghost sec" data-a="definitivos">🔢 Números definitivos</button><button class="btn ghost sec" data-a="habilitar">🔓 Habilitar edición</button><button class="btn ghost sec" data-a="importar">📥 Cargar / actualizar base</button><button class="btn ghost sec" data-a="descargar">⬇ Descargar base de datos</button><button class="btn bad sec" data-a="borrar-todo" title="Eliminar todas las fichas">🗑 Eliminar todas las fichas</button>' :
         '<button class="btn ghost sec" data-a="exportar">⬇ Exportar Excel</button>') + '</div>' +
       '<div class="toolbar"><div class="seg" id="fl-agr"><button data-g="nivel" class="' + (filtro.agrupar === 'nivel' ? 'active' : '') + '">Por curso ' + esc(anio) + '</button><button data-g="anterior" class="' + (filtro.agrupar === 'anterior' ? 'active' : '') + '">Por curso actual ' + esc(anio - 1) + '</button></div>' +
       '<select id="fl-curso"><option value="">' + (filtro.agrupar === 'anterior' ? 'Todos los cursos' : 'Todos los niveles') + '</option>' + cursos.map(function (c) { return '<option' + (c === filtro.curso ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
@@ -3431,7 +3588,7 @@ var Staff = (function () {
         '<button class="btn sm ghost" data-a="imprimir-curso" data-curso="' + esc(g.curso) + '">🖨 Imprimir grupo</button></div>' +
         '<div class="table-wrap"><table class="t"><thead><tr><th>N°</th><th>N° matr.</th><th>Estudiante</th><th>RUT</th><th>' + (anterior ? 'Nivel ' + esc(S.form.config.anio) : 'Curso procedencia') + '</th><th class="hide-sm">Apoderado/a</th><th>Estado</th><th class="hide-sm hide-md">Actualización</th><th></th></tr></thead><tbody>' +
         g.items.map(function (f, i) {
-          return '<tr><td class="muted">' + (i + 1) + '</td><td class="num-mat">' + esc(f.numeroMatricula || '—') + '</td><td><a href="#" class="name" data-a="editar" data-rut="' + esc(f.rut) + '">' + esc(UI.nombreEst(f)) + '</a></td><td class="nowrap">' + esc(f.rut) + '</td>' +
+          return '<tr><td class="muted">' + (i + 1) + '</td><td class="num-mat">' + numHtml(f) + '</td><td><a href="#" class="name" data-a="editar" data-rut="' + esc(f.rut) + '">' + esc(UI.nombreEst(f)) + '</a></td><td class="nowrap">' + esc(f.rut) + '</td>' +
             '<td class="small nowrap">' + esc(anterior ? f.curso : (f.cursoAnterior || 'Nuevo/a')) + '</td>' +
             '<td class="hide-sm small">' + esc(UI.nombreApo(f) || '—') + (f.apo_celular ? '<br><span class="muted">📱 ' + esc(f.apo_celular) + '</span>' : '') + '</td><td>' + UI.badgeEstado(f.estado) + marcasEdicion(f) + badgeTipo(f) + '</td>' +
             '<td class="hide-sm hide-md small muted">' + esc(f.ultimaModificacion || '') + '<br>' + esc(f.modificadoPor || '') + '</td>' +
@@ -3481,18 +3638,38 @@ var Staff = (function () {
           return '<label class="check" style="font-weight:600"><input type="checkbox" data-sl="' + esc(n) + '"' + (reglas[n] === 'nivel' ? ' checked' : '') + '><span>' + esc(dest) + ' ' + esc(anio) + ' <span class="small muted">(desde ' + esc(n) + ')</span></span></label>';
         }).join('') + '</div>' +
         '<h4 style="margin:20px 0 6px">2. Matrícula de repitentes</h4>' +
-        '<label class="check"><input type="checkbox" id="org-rep"' + (UI.si(S.form.config.permitirRepitentes) ? ' checked' : '') + '><span>Permitir que docentes y asistentes matriculen <b>repitentes en el mismo curso</b> (botón 🔁 en la lista). Habilítelo según los cupos disponibles; el Equipo de Gestión siempre puede hacerlo.</span></label>',
+        '<label class="check"><input type="checkbox" id="org-rep"' + (UI.si(S.form.config.permitirRepitentes) ? ' checked' : '') + '><span>Permitir que docentes y asistentes matriculen <b>repitentes en el mismo curso</b> (botón 🔁 en la lista). Habilítelo según los cupos disponibles; el Equipo de Gestión siempre puede hacerlo.</span></label>' +
+        '<h4 style="margin:20px 0 6px">3. Números de matrícula</h4>' +
+        '<label class="check"><input type="checkbox" id="org-prov"' + (UI.si(S.form.config.numerosProvisorios) ? ' checked' : '') + '><span>El N° que se asigna al matricular es <b>provisorio</b> (se indica en la ficha). Al terminar, use <b>«🔢 Números definitivos»</b> para numerar de forma correlativa de PreKínder a 4° Medio.</span></label>',
       buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: '💾 Guardar y aplicar', cls: 'ok', onClick: function (el) {
         var o = {}; UI.$$('[data-sl]', el).forEach(function (x) { o[x.dataset.sl] = x.checked ? 'nivel' : 'letra'; });
-        return { reglas: o, rep: el.querySelector('#org-rep').checked };
+        return { reglas: o, rep: el.querySelector('#org-rep').checked, prov: el.querySelector('#org-prov').checked };
       } }]
     });
     if (!r) return;
-    var ok = await UI.intentar(function () { return UI.api('guardarConfig', { config: { promocionReglas: JSON.stringify(r.reglas), permitirRepitentes: r.rep ? 'SI' : 'NO' } }); }, 'Guardando…');
+    var ok = await UI.intentar(function () { return UI.api('guardarConfig', { config: { promocionReglas: JSON.stringify(r.reglas), permitirRepitentes: r.rep ? 'SI' : 'NO', numerosProvisorios: r.prov ? 'SI' : 'NO' } }); }, 'Guardando…');
     if (!ok) return;
     var ap = await UI.intentar(function () { return UI.api('aplicarPromocion'); }, 'Aplicando a las fichas…');
     await refrescarForm();
     if (ap) await UI.success('Organización guardada', '<b>' + ap.actualizadas + '</b> fichas actualizaron su curso ' + esc(anio) + '. Los niveles sin letra aparecen marcados en la lista; repártalos con «🔀 Asignar cursos».' + (r.rep ? '<br>🔁 Matrícula de repitentes habilitada.' : ''));
+    ir('fichas');
+  }
+
+  /* N° de matrícula definitivos: correlativos de PreKínder a 4° Medio (por curso y apellido). Solo cambia el N°; todo lo demás queda igual. */
+  async function numerosDefinitivos() {
+    var mat = fichas.filter(function (f) { return f.estado === 'matriculada' && f.numeroMatricula; }), prov = mat.filter(function (f) { return f.numeroProvisorio; });
+    var r = await UI.modal({
+      title: '🔢 Confirmar números de matrícula definitivos', size: 'wide',
+      html: '<p class="muted" style="margin-top:0">Hay <b>' + mat.length + '</b> estudiantes matriculados, de los cuales <b>' + prov.length + '</b> tienen N° <b>provisorio</b>. Los números se ordenan de forma correlativa desde <b>PreKínder hasta 4° Medio</b> (por curso y luego por apellido). <b>Solo cambia el N° de matrícula</b>; el resto de la ficha queda igual.</p>' +
+        '<div class="grid"><div class="field"><label>¿Qué fichas numerar?</label><select id="nd-modo"><option value="todos">Todas las matriculadas (renumerar todo)</option><option value="provisorios">Solo las que tienen N° provisorio (continúan después del último definitivo)</option></select></div>' +
+        '<div class="field"><label>Comenzar desde el N°</label><input id="nd-desde" type="number" min="1" value="1"></div></div>' +
+        '<div class="hint" style="margin-top:14px;background:#fff4d6;border-left:4px solid #f0b429;padding:10px 12px;border-radius:8px">⚠️ Si ya imprimió fichas con el N° provisorio, vuelva a imprimirlas después de confirmar los definitivos.</div>',
+      buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: '🔢 Confirmar números definitivos', cls: 'ok', onClick: function (el) { return { modo: el.querySelector('#nd-modo').value, desde: el.querySelector('#nd-desde').value }; } }]
+    });
+    if (!r) return;
+    var res = await UI.intentar(function () { return UI.api('numerarDefinitivos', r); }, 'Numerando…');
+    if (!res) return;
+    await UI.success('Números definitivos asignados', 'Se numeraron <b>' + res.numerados + '</b> matrículas, del <b>N° ' + res.desde + '</b> al <b>N° ' + res.hasta + '</b>, desde PreKínder a 4° Medio.');
     ir('fichas');
   }
 
@@ -3513,6 +3690,7 @@ var Staff = (function () {
     else if (a === 'borrar-todo') borrarTodo();
     else if (a === 'asignar-cursos') asignarCursos(b.dataset.curso);
     else if (a === 'organizacion') organizacion();
+    else if (a === 'definitivos') numerosDefinitivos();
     else if (a === 'repite') cambiarRepitencia(f).then(function (nf) { if (nf) pintarLista(); });
   }
 
@@ -3778,17 +3956,39 @@ var Staff = (function () {
     var f = await UI.api('obtenerFicha', { rut: rut });
     ed = { f: f, pend: {}, guardando: false };
     pintarEditor();
+    iniciarPresencia();
+  }
+  /* Edición simultánea: cada 40 s avisa quién más está en la ficha e incorpora los cambios que otros guardaron
+     (sin tocar lo que este usuario está escribiendo; el servidor guarda campo por campo). */
+  var presTimer = null;
+  function detenerPresencia() { if (presTimer) clearInterval(presTimer); presTimer = null; }
+  function iniciarPresencia() { detenerPresencia(); latido(); presTimer = setInterval(latido, 40000); }
+  async function latido() {
+    if (!ed || vista !== 'editor') return detenerPresencia();
+    if (document.hidden) return;
+    var rut = ed.f.rut, r, nf;
+    try { r = await UI.api('presencia', { rut: rut }); } catch (e) { return; }
+    if (!ed || ed.f.rut !== rut) return;
+    var box = UI.$('#presencia'); if (box) box.innerHTML = UI.presenciaHtml(r.otros, false);
+    var antes = ed.huella; ed.huella = r.huella;
+    if (!antes || antes === r.huella || ed.guardando) return;
+    try { nf = await UI.api('obtenerFicha', { rut: rut }); } catch (e) { return; }
+    if (!ed || ed.f.rut !== rut || ed.guardando) { if (ed) ed.huella = antes; return; }
+    var root = UI.$('#ed-form'), cambiados = root ? UI.refrescarCampos(root, S.form.campos, nf, ed.pend, function () { return puedoEditar(nf); }) : [];
+    Object.keys(ed.pend).forEach(function (k) { nf[k] = ed.pend[k]; });
+    ed.f = nf; actualizarLista(nf);
+    if (cambiados.length) UI.toast('🔄 ' + (r.modificadoPor && r.modificadoPor !== P.nombre ? r.modificadoPor : 'Otra persona') + ' actualizó: ' + cambiados.slice(0, 3).join(', ') + (cambiados.length > 3 ? ' y ' + (cambiados.length - 3) + ' más' : ''), 'ok');
   }
   function pintarEditor() {
     var f = ed.f, anio = S.form.config.anio, puede = puedoEditar(f), mat = f.estado === 'matriculada';
     var estados = Object.keys(S.form.estados).filter(function (k) { return k !== 'desbloqueada' && (k !== 'matriculada' || mat); });
     var docs = S.form.documentos.filter(function (d) { return UI.si(d.requiereAceptacion); }), acc = f.aceptaciones || {};
     var abierta = f.editFamilia || f.editFuncionario;
-    main().innerHTML = '<div class="page-h"><button class="btn ghost sm" data-e="volver">← Volver</button><div><div class="eyebrow">Ficha de matrícula ' + esc(anio) + (f.numeroMatricula ? ' · N° ' + esc(f.numeroMatricula) : '') + '</div><h2>' + esc(nombreCompleto(f)) + '</h2></div>' + UI.badgeEstado(f.estado) + marcasEdicion(f) + '</div>' +
-      (mat && !puede ? '<div class="lock-banner" style="margin:0 0 18px"><div class="ico">🔒</div><div><b>Estudiante matriculado/a · N° ' + esc(f.numeroMatricula) + '</b><br><span class="muted">La ficha está cerrada. Puede verla, imprimirla y compartirla. Para modificar datos, el Equipo de Gestión debe habilitar la edición.</span></div></div>' : '') +
+    main().innerHTML = '<div class="page-h"><button class="btn ghost sm" data-e="volver">← Volver</button><div><div class="eyebrow">Ficha de matrícula ' + esc(anio) + (f.numeroMatricula ? ' · N° ' + esc(f.numeroMatricula) + (f.numeroProvisorio ? ' (provisorio)' : '') : '') + '</div><h2>' + esc(nombreCompleto(f)) + '</h2></div>' + UI.badgeEstado(f.estado) + marcasEdicion(f) + '</div><div id="presencia"></div>' +
+      (mat && !puede ? '<div class="lock-banner" style="margin:0 0 18px"><div class="ico">🔒</div><div><b>Estudiante matriculado/a · N° ' + numHtml(f) + '</b><br><span class="muted">La ficha está cerrada. Puede verla, imprimirla y compartirla. Para modificar datos, el Equipo de Gestión debe habilitar la edición.</span></div></div>' : '') +
       (f.editFamilia ? '<div class="update-banner" style="margin:0 0 18px"><div class="ico">✏️</div><div><b class="t">Edición habilitada para la familia</b><br><span class="muted">' + (f.editFamilia === 'TODOS' ? 'Puede actualizar todos sus datos.' : 'Datos solicitados: ' + esc(S.form.campos.filter(function (c) { return f.editFamilia.split(',').indexOf(c.id) >= 0; }).map(function (c) { return c.etiqueta; }).join(', '))) + '</span></div></div>' : '') +
       '<section class="card"><div class="editor-meta">' +
-      '<div><label for="m-num">N° de matrícula</label>' + (gestion() && mat ? '<input id="m-num" value="' + esc(f.numeroMatricula || '') + '">' : '<div class="meta-v num-mat" style="font-size:20px">' + esc(f.numeroMatricula || '— (se asigna al matricular)') + '</div>') + '</div>' +
+      '<div><label for="m-num">N° de matrícula</label>' + (gestion() && mat ? '<input id="m-num" value="' + esc(f.numeroMatricula || '') + '">' : '<div class="meta-v num-mat" style="font-size:20px">' + numHtml(f, '— (se asigna al matricular)') + '</div>') + (gestion() && mat && f.numeroProvisorio ? '<small class="help">Provisorio · se confirma con «🔢 Números definitivos»</small>' : '') + '</div>' +
       '<div><label>RUT estudiante</label><div class="meta-v">' + esc(f.rut) + '</div></div>' +
       '<div><label>Tipo de matrícula <span class="small muted">(no lo ve la familia)</span></label><div class="meta-v">' + esc(TIPO_TXT[f.tipoMatricula] || '') + '</div>' + (f.cursoAnterior && (gestion() || UI.si(S.form.config.permitirRepitentes)) && (f.estado !== 'matriculada' || gestion()) ? '<button class="btn sm ghost" style="margin-top:6px" data-e="repite">' + (f.tipoMatricula === 'repitente' ? '↩ Quitar repitencia' : '🔁 Matricular como repitente') + '</button>' : '') + '</div>' +
       '<div><label for="m-ant">Curso de procedencia</label>' + selAnterior('m-ant', f.cursoAnterior || '', !puede) + '</div>' +
@@ -3890,7 +4090,7 @@ var Staff = (function () {
       var r = await UI.modal({
         title: '✅ Confirmar matrícula', size: 'wide',
         html: '<div class="grid"><div class="field"><label>N° de matrícula<span class="req">*</span></label><input id="mt-num" value="' + esc(sug) + '" style="font-size:22px;font-family:var(--font-d);font-weight:700">' +
-          '<small class="help">Sugerido automáticamente (el siguiente disponible). Puede cambiarlo.</small></div>' +
+          '<small class="help">Sugerido automáticamente (el siguiente disponible). Puede cambiarlo.' + (UI.si(S.form.config.numerosProvisorios) ? ' <b>Quedará como N° provisorio</b> hasta que el Equipo de Gestión confirme los números definitivos.' : '') + '</small></div>' +
           '<div class="field"><label>Estudiante</label><div class="meta-v" style="padding-top:8px">' + esc(nombreCompleto(f)) + '<div class="small muted">RUT ' + esc(f.rut) + '</div></div></div>' +
           '<div class="field"><label>Curso de procedencia</label><div class="meta-v">' + esc(f.cursoAnterior || 'Estudiante nuevo') + '</div></div>' +
           '<div class="field"><label>Se matricula en (' + esc(anio) + ')</label><div class="meta-v">' + esc(f.curso || '—') + '</div></div></div>' +
@@ -3909,7 +4109,7 @@ var Staff = (function () {
       if (!r.matriculado) { UI.marcarErrores(root, r.faltantes); return UI.faltantes(r.faltantes, function (it) { UI.resaltar(it.id); }, 'No se puede cerrar la matrícula'); }
       ed.f = r.ficha; actualizarLista(r.ficha); pintarEditor();
       var imp = await UI.modal({
-        center: true, title: '¡Matrícula N° ' + esc(r.ficha.numeroMatricula) + ' registrada!',
+        center: true, title: '¡Matrícula N° ' + esc(r.ficha.numeroMatricula) + (r.ficha.numeroProvisorio ? ' (provisorio)' : '') + ' registrada!',
         iconHtml: '<div class="m-icon success"><svg class="checkmark" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M14 27l8 8 16-16"/></svg></div>',
         html: '<p class="muted" style="font-size:15.5px"><b>' + esc(nombreCompleto(f)) + '</b> quedó matriculado/a en <b>' + esc(r.ficha.curso) + '</b>.' + (r.correoEnviado ? '<br>📧 Se envió una copia de la ficha al apoderado/a.' : '') + '<br>¿Desea imprimir la ficha para las firmas?</p>',
         buttons: [{ text: 'Más tarde', cls: 'ghost', value: false }, { text: '🖨 Imprimir ficha', cls: 'ok', value: true }]
@@ -4175,6 +4375,86 @@ var Staff = (function () {
     fichas = [];
     await UI.success('Fichas eliminadas', 'Se eliminaron <b>' + r.eliminadas + '</b> fichas. Se descargó una copia de respaldo. Ya puede cargar la nueva base con «📥 Cargar / actualizar base».');
     ir('fichas');
+  }
+
+  /* =============================== AVANCE DEL CURSO =============================== */
+  // Cuánto falta, quiénes completaron y quiénes no (con acceso directo a cada ficha) y recordatorio a los que faltan.
+  var avanceSel = '', avanceAgr = '';
+  function completa(f) { return f.estado === 'enviada' || f.estado === 'matriculada'; }
+  function avanceFicha(f) { // % de los datos obligatorios que debe completar la familia + documentos por confirmar
+    var mapa = CoreUtil.mapaCampos(S.form.campos), req = S.form.campos.filter(function (c) { return UI.si(c.obligatorio) && UI.si(c.editableFamilia) && CoreUtil.visible(c, f, mapa); });
+    var docs = S.form.documentos.filter(function (d) { return UI.si(d.requiereAceptacion); }), acc = f.aceptaciones || {};
+    var ok = req.filter(function (c) { return String(f[c.id] || '').trim(); }).length + docs.filter(function (d) { return acc[d.id]; }).length, tot = req.length + docs.length;
+    return { pct: tot ? Math.round(ok * 100 / tot) : 100, faltan: tot - ok };
+  }
+  async function vAvance(sel) {
+    fichas = await UI.api('listarFichas');
+    avanceAgr = avanceAgr || (gestion() ? 'nivel' : 'anterior');
+    if (sel !== undefined) avanceSel = sel;
+    var anio = S.form.config.anio;
+    function grupo(f) { return avanceAgr === 'anterior' ? (f.cursoAnterior || 'Estudiantes nuevos') : (f.curso || 'Sin nivel'); }
+    var vig = fichas.filter(function (f) { return f.estado !== 'retirado'; }), grupos = [];
+    vig.forEach(function (f) { var g = grupo(f); if (grupos.indexOf(g) < 0) grupos.push(g); });
+    if (grupos.indexOf(avanceSel) < 0) avanceSel = '';
+    var lista = vig.filter(function (f) { return !avanceSel || grupo(f) === avanceSel; });
+    var hechas = lista.filter(completa), faltan = lista.filter(function (f) { return !completa(f); });
+    var pct = lista.length ? Math.round(hechas.length * 100 / lista.length) : 0;
+    var enProc = faltan.filter(function (f) { return f.estado === 'en_proceso' || f.estado === 'desbloqueada'; }).length;
+    function nombreItem(f) {
+      var a = avanceFicha(f);
+      return '<div class="nombre-item" data-ver="' + esc(f.rut) + '"><div class="grow"><b>' + esc(UI.nombreEst(f)) + '</b><div class="small muted">' + esc(grupo(f)) + '</div></div>' +
+        (completa(f) ? UI.badgeEstado(f.estado) : '<div class="mini-bar" title="' + a.pct + '% completado"><i style="width:' + a.pct + '%"></i></div><span class="small muted nowrap">' + a.pct + '%</span>') + '</div>';
+    }
+    var barras = grupos.map(function (g) {
+      var l = vig.filter(function (f) { return grupo(f) === g; }), t = l.length || 1;
+      var m = l.filter(function (f) { return f.estado === 'matriculada'; }).length, e = l.filter(function (f) { return f.estado === 'enviada'; }).length,
+        pr = l.filter(function (f) { return f.estado === 'en_proceso' || f.estado === 'desbloqueada'; }).length;
+      return '<div class="barra-grupo" data-grupo="' + esc(g) + '"><b>' + esc(g) + '</b><div class="bar"><i class="m" style="width:' + (m * 100 / t) + '%"></i><i class="e" style="width:' + (e * 100 / t) + '%"></i><i class="p" style="width:' + (pr * 100 / t) + '%"></i></div>' +
+        '<span class="small"><b>' + Math.round((m + e) * 100 / t) + '%</b> · ' + (m + e) + '/' + l.length + '</span></div>';
+    }).join('');
+    var tel = function (f) { var d = String(f.apo_celular || '').replace(/\D/g, ''); if (d.length === 9) d = '56' + d; return d.length >= 11 ? d : ''; };
+    main().innerHTML = '<div class="page-h"><div><div class="eyebrow">Proceso de matrícula ' + esc(anio) + '</div><h2>' + (gestion() ? 'Avance por curso' : 'Avance de mi curso') + '</h2></div><span class="grow"></span>' +
+      '<div class="seg" id="av-agr"><button data-g="nivel" class="' + (avanceAgr === 'nivel' ? 'active' : '') + '">Curso ' + esc(anio) + '</button><button data-g="anterior" class="' + (avanceAgr === 'anterior' ? 'active' : '') + '">Curso actual ' + esc(anio - 1) + '</button></div>' +
+      '<select id="av-sel" style="width:auto"><option value="">' + (gestion() ? 'Todos los cursos' : 'Todos mis cursos') + '</option>' + grupos.map(function (g) { return '<option' + (g === avanceSel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join('') + '</select></div>' +
+      '<section class="card"><div class="avance-top"><div class="donut" style="--p:' + pct + '"><span>' + pct + '%<small>fichas completadas</small></span></div><div>' +
+      '<h3 style="margin:0 0 4px">' + esc(avanceSel || (gestion() ? 'Todo el establecimiento' : 'Mis cursos')) + '</h3>' +
+      '<div class="row" style="margin:8px 0 14px"><span class="badge b-matriculada" style="font-size:13px">✅ ' + hechas.length + ' completadas</span><span class="badge b-en_proceso" style="font-size:13px">✏️ ' + enProc + ' en proceso</span>' +
+      '<span class="badge b-pendiente" style="font-size:13px">⏳ ' + (faltan.length - enProc) + ' sin iniciar</span><span class="badge b-blue" style="font-size:13px">' + lista.length + ' estudiantes</span></div>' +
+      (faltan.length ? '<button class="btn gold" id="av-recordar">📢 Enviar recordatorio a los ' + faltan.length + ' que faltan</button>' : '<span class="badge b-matriculada" style="font-size:14px;padding:8px 14px">🎉 ¡Todas las fichas están completas!</span>') +
+      (grupos.length > 1 && !avanceSel ? '<div style="margin-top:18px">' + barras + '<div class="legend" style="margin-top:6px"><span><i style="background:var(--ok)"></i>Matriculados</span><span><i style="background:var(--blue-2)"></i>Enviadas</span><span><i style="background:#f0b429"></i>En proceso</span><span><i style="background:#e9eef7"></i>Sin iniciar</span></div></div>' : '') +
+      '</div></div></section>' +
+      '<div class="listas-avance"><section class="card"><div class="card-h"><div class="sec-num">⏳</div><h3>Faltan (' + faltan.length + ')</h3></div>' +
+      (faltan.length ? faltan.map(nombreItem).join('') : '<p class="muted">Nadie pendiente.</p>') + '</section>' +
+      '<section class="card"><div class="card-h"><div class="sec-num">✅</div><h3>Completadas (' + hechas.length + ')</h3></div>' +
+      (hechas.length ? hechas.map(nombreItem).join('') : '<p class="muted">Aún no hay fichas completadas.</p>') + '</section></div>' +
+      '<section class="card" style="padding:0;overflow:hidden;margin-top:18px"><div class="curso-h"><h3>Detalle estudiante por estudiante</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>N°</th><th>Estudiante</th><th>Estado</th><th>Avance</th><th class="hide-sm">Apoderado/a</th><th></th></tr></thead><tbody>' +
+      lista.map(function (f, i) {
+        var a = avanceFicha(f), t = tel(f);
+        var msg = encodeURIComponent('Estimada familia: le recordamos completar la ficha de matrícula ' + anio + ' de ' + (f.est_nombres || '') + ' en la plataforma del ' + S.form.config.nombreColegio + (S.form.config.urlPlataforma ? ': ' + S.form.config.urlPlataforma : '') + '. ¡Gracias!');
+        return '<tr><td class="muted">' + (i + 1) + '</td><td><a href="#" class="name" data-ver="' + esc(f.rut) + '">' + esc(UI.nombreEst(f)) + '</a><div class="small muted">' + esc(grupo(f)) + '</div></td>' +
+          '<td>' + UI.badgeEstado(f.estado) + '</td><td><div class="row" style="flex-wrap:nowrap;gap:8px"><div class="mini-bar"><i style="width:' + a.pct + '%;' + (a.pct === 100 ? 'background:var(--ok)' : '') + '"></i></div><span class="small">' + a.pct + '%' + (a.faltan && !completa(f) ? ' · faltan ' + a.faltan : '') + '</span></div></td>' +
+          '<td class="hide-sm small">' + esc(UI.nombreApo(f) || '—') + (f.apo_email ? '<div class="muted">' + esc(f.apo_email) + '</div>' : '<div class="muted" style="color:var(--bad)">sin correo</div>') + '</td>' +
+          '<td><div class="acts">' + (!completa(f) && t ? '<a class="icon-btn wa" title="Recordar por WhatsApp" target="_blank" rel="noopener" href="https://wa.me/' + t + '?text=' + msg + '">💬</a>' : '') +
+          '<button class="icon-btn" title="Ver ficha" data-ver="' + esc(f.rut) + '">✏️</button></div></td></tr>';
+      }).join('') + '</tbody></table></div></section>';
+    UI.$('#av-sel').onchange = function () { vAvance(this.value); };
+    UI.$('#av-agr').onclick = function (e) { var b = e.target.closest('[data-g]'); if (b && b.dataset.g !== avanceAgr) { avanceAgr = b.dataset.g; vAvance(''); } };
+    main().onclick = function (e) {
+      var v = e.target.closest('[data-ver]'); if (v) { e.preventDefault(); return ir('editor', v.dataset.ver); }
+      var g = e.target.closest('[data-grupo]'); if (g) return vAvance(g.dataset.grupo);
+    };
+    var br = UI.$('#av-recordar');
+    if (br) br.onclick = async function () {
+      var cierre = String(S.form.config.fechaCierre || '').slice(0, 10).split('-').reverse().join('/');
+      var r = await UI.modal({ title: '📢 Recordatorio a ' + faltan.length + ' familias', size: 'wide',
+        html: '<p class="muted" style="margin-top:0">Se enviará a los apoderados de <b>' + esc(avanceSel || (gestion() ? 'todos los cursos' : 'sus cursos')) + '</b> cuya ficha aún no está completa (en copia oculta). Llega marcado como <b>📢 IMPORTANTE</b>.</p>' +
+          '<div class="field"><label>Título</label><input id="rc-a" value="' + esc('Recordatorio: complete la ficha de matrícula ' + anio) + '"></div>' +
+          '<div class="field" style="margin-top:10px"><label>Mensaje</label><textarea id="rc-m" rows="7">' + esc('Estimada familia:\nAún no hemos recibido la ficha de matrícula ' + anio + ' de su pupilo/a. Le recordamos ingresar a la plataforma con el RUT del estudiante y su clave, completar los datos y presionar «Enviar matrícula».' + (cierre ? '\nEl plazo vence el ' + cierre + '.' : '') + '\nSi olvidó su clave, puede recuperarla en la misma plataforma.\n\nMuchas gracias.') + '</textarea></div>',
+        buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: '📢 Enviar recordatorio', cls: 'gold', onClick: function (el) { return { a: el.querySelector('#rc-a').value, m: el.querySelector('#rc-m').value }; } }] });
+      if (!r) return;
+      var res = await UI.intentar(function () { return UI.api('enviarRecordatorioCurso', { estadoFicha: 'pendientes', ruts: faltan.map(function (f) { return f.rut; }), grupo: avanceSel || 'Mis cursos', asunto: r.a, mensaje: r.m }); }, 'Enviando recordatorio…');
+      if (res) UI.success(res.restantes ? 'Envío parcial' : 'Recordatorio enviado', 'Se enviaron <b>' + res.enviados + '</b> correos' + (res.restantes ? ' y faltan <b>' + res.restantes + '</b> por el límite diario de Google (se pueden completar mañana en Comunicaciones ▸ Historial).' : '.') + (res.error ? '<br><span style="color:var(--bad)">' + esc(res.error) + '</span>' : ''));
+    };
   }
 
   /* ================================ USUARIOS ================================ */
