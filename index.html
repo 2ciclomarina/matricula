@@ -592,6 +592,16 @@ tr.total td { background: var(--navy); color: #fff; font-weight: 800; }
 .ciclo-bloque { border-left: 4px solid var(--cc); background: color-mix(in srgb, var(--cc) 5%, #fff); border-radius: 0 12px 12px 0; padding: 10px 12px 4px; margin-bottom: 12px; }
 .ciclo-h { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 8px; font-weight: 800; color: var(--cc); font-size: 14px; letter-spacing: .02em; }
 .ciclo-h .small { color: var(--muted); font-weight: 700; }
+/* avance: pestañas desplegables por curso */
+.desp { border: 1px solid color-mix(in srgb, var(--cc) 25%, #e6edf8); border-left: 4px solid var(--cc); border-radius: 12px; margin-bottom: 8px; background: #fff; overflow: hidden; }
+.desp summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; user-select: none; }
+.desp summary::-webkit-details-marker { display: none; }
+.desp summary:hover { background: color-mix(in srgb, var(--cc) 6%, #fff); }
+.desp-n { font-size: 13px; font-weight: 700; color: var(--muted); }
+.desp-chev { color: var(--cc); font-size: 15px; transition: transform .2s; }
+.desp[open] .desp-chev { transform: rotate(180deg); }
+.desp[open] summary { background: color-mix(in srgb, var(--cc) 8%, #fff); border-bottom: 1px solid color-mix(in srgb, var(--cc) 18%, #fff); }
+.desp-b { padding: 6px; }
 
 </style>
 </head>
@@ -1301,8 +1311,31 @@ function createCore_(env) {
     var m = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
     return m ? m[3] + '-' + pad(m[2]) + '-' + pad(m[1]) : v;
   }
-  /* Importa o actualiza fichas desde un Excel. Acepta:
-     - el formato del registro del colegio (Rut, DV, AL Paterno, …, Curso, Apod …)
+  /* Separa un nombre completo en nombres y apellidos.
+     «PÉREZ SOTO, JUAN ANDRÉS» → apellidos antes de la coma. Sin coma: el estudiante viene como «PATERNO MATERNO NOMBRES»
+     (así lo entregan los registros escolares) y el apoderado como «NOMBRES PATERNO MATERNO». Respeta apellidos compuestos (San Martín, De la Fuente). */
+  var PARTICULAS = ['de', 'del', 'la', 'las', 'los', 'san', 'santa', 'da', 'das', 'do', 'dos', 'van', 'von', 'di', 'mc', 'y'];
+  function grupos(palabras) {
+    var g = [], actual = [];
+    palabras.forEach(function (p) { actual.push(p); if (PARTICULAS.indexOf(norm(p)) < 0) { g.push(actual.join(' ')); actual = []; } });
+    if (actual.length) g.push(actual.join(' '));
+    return g;
+  }
+  function separarNombre(v, apellidosPrimero, pre, d) {
+    v = str(v).replace(/\s+/g, ' ').replace(/\d+/g, '').trim();
+    var nom = '', ap = [];
+    if (v.indexOf(',') >= 0) { ap = grupos(v.split(',')[0].trim().split(' ')); nom = v.split(',').slice(1).join(' ').trim(); }
+    else {
+      var g = grupos(v.split(' '));
+      if (g.length === 1) nom = g[0];
+      else if (apellidosPrimero) { ap = g.slice(0, g.length >= 3 ? 2 : 1); nom = g.slice(ap.length).join(' '); }
+      else { var nAp = g.length >= 3 ? 2 : 1; ap = g.slice(g.length - nAp); nom = g.slice(0, g.length - nAp).join(' '); }
+    }
+    d[pre + 'nombres'] = nom;
+    d[pre + 'apellido_paterno'] = ap[0] || '';
+    d[pre + 'apellido_materno'] = ap.slice(1).join(' ');
+  }
+  /* Importa o actualiza fichas desde un Excel. Acepta:     - el formato del registro del colegio (Rut, DV, AL Paterno, …, Curso, Apod …)
      - el Excel descargado desde la plataforma (columnas con los nombres de los datos de la ficha).
      opciones.modo: 'nuevos' (solo agrega) · 'completar' (solo llena datos vacíos) · 'sobrescribir' (reemplaza todos los datos con lo del Excel).
      Una celda vacía no borra un dato ya registrado, salvo que se indique opciones.vaciasBorran. */
@@ -1310,47 +1343,73 @@ function createCore_(env) {
     opciones = opciones || {};
     var modo = opciones.modo || 'nuevos', res = { creadas: 0, actualizadas: 0, sinCambios: 0, omitidas: 0, conflictos: 0, reconocidas: [], ignoradas: [] };
     if (!filas || filas.length < 2) return res;
-    var REG = { 'al nombre': 'est_nombres', 'al paterno': 'est_apellido_paterno', 'ap materno': 'est_apellido_materno', 'nacimiento': 'est_fecha_nacimiento',
-      'direccion': 'est_direccion', 'apod comuna': 'est_comuna', 'apod nombre': 'apo_nombres', 'apod paterno': 'apo_apellido_paterno',
-      'apod materno': 'apo_apellido_materno', 'apod celular': 'apo_celular', 'apod email': 'apo_email', 'matricula': 'fechaIngreso', 'fecha de retiro': 'fechaRetiro',
-      'n° matricula': 'numeroMatricula', 'n matricula': 'numeroMatricula', 'numero de matricula': 'numeroMatricula', 'nro matricula': 'numeroMatricula',
-      'curso de procedencia': 'cursoAnterior', 'curso anterior': 'cursoAnterior', 'rut estudiante': '_rutCompleto', 'rut': '_rut', 'dv': '_dv', 'curso': '_curso',
-      // otros nombres habituales de columnas del estudiante
-      'run': '_rut', 'run estudiante': '_rutCompleto', 'rut alumno': '_rutCompleto', 'rut del estudiante': '_rutCompleto', 'rut alumno/a': '_rutCompleto',
-      'nombres': 'est_nombres', 'nombre': 'est_nombres', 'al nombres': 'est_nombres', 'nombres estudiante': 'est_nombres', 'nombres del estudiante': 'est_nombres', 'nombre alumno': 'est_nombres', 'nombres alumno': 'est_nombres',
-      'apellido paterno': 'est_apellido_paterno', 'paterno': 'est_apellido_paterno', 'ap paterno': 'est_apellido_paterno', 'apellido paterno estudiante': 'est_apellido_paterno',
-      'apellido materno': 'est_apellido_materno', 'materno': 'est_apellido_materno', 'al materno': 'est_apellido_materno', 'apellido materno estudiante': 'est_apellido_materno',
-      'fecha de nacimiento': 'est_fecha_nacimiento', 'fecha nacimiento': 'est_fecha_nacimiento', 'sexo': 'est_sexo', 'genero': 'est_sexo' };
+    // Nombres de columna habituales (se comparan sin tildes, espacios ni signos: «FechaNac» = «Fecha nac.» = «fechanac»).
+    var REG = {};
+    function alias(destino, lista) { lista.split(' ').forEach(function (a) { REG[a] = destino; }); }
+    alias('_rut', 'rut run rutestudiante rutalumno runalumno runestudiante rutdelestudiante rutdelalumno rutalumnoa runalumnoa');
+    alias('_dv', 'dv digito digitoverificador dig');
+    alias('_nombreEst', 'nombrealumno nombrealumnoa nombreestudiante nombredelestudiante nombrecompletoalumno nombrecompletoestudiante alumno alumnoa estudiante nombrealumnos nombre');
+    alias('est_nombres', 'alnombre alnombres nombres nombresestudiante nombresdelestudiante nombresalumno nombresalumnoa primernombre');
+    alias('est_apellido_paterno', 'alpaterno appaterno apellidopaterno paterno apellidopaternoestudiante apellido1 primerapellido apellidopaternoalumno');
+    alias('est_apellido_materno', 'apmaterno almaterno apellidomaterno materno apellidomaternoestudiante apellido2 segundoapellido apellidomaternoalumno');
+    alias('est_fecha_nacimiento', 'nacimiento fechanacimiento fechadenacimiento fechanac fecnac fnac fechanacimientoestudiante');
+    alias('est_sexo', 'sexo genero');
+    alias('est_direccion', 'direccion domicilio direccionestudiante direcciondelestudiante');
+    alias('est_comuna', 'comuna apodcomuna comunaestudiante');
+    alias('_curso', 'curso cursoactual grado cursoalumno');
+    alias('cursoAnterior', 'cursodeprocedencia cursoanterior');
+    alias('_nombreApo', 'apodnombre nombreapoderado nombreapod apoderado apoderadoa nombretutor tutor apoderadotitular nombredelapoderado');
+    alias('apo_nombres', 'nombresapoderado nombresapod nombresdelapoderado nombresapoderadoa');
+    alias('apo_apellido_paterno', 'apodpaterno apellidopaternoapoderado paternoapoderado');
+    alias('apo_apellido_materno', 'apodmaterno apellidomaternoapoderado maternoapoderado');
+    alias('apo_rut', 'rutapoderado rutapod runapoderado rutapoderadoa ruttutor');
+    alias('apo_celular', 'apodcelular fonoapod fonoapoderado telefonoapoderado celularapoderado telefonoapod celularapod celular telefono fono movil');
+    alias('apo_email', 'apodemail emailapod emailapoderado correoapoderado mailapoderado correo email mail correoelectronico');
+    alias('pad_nombre', 'nombrepadre nombredelpadre');
+    alias('mad_nombre', 'nombremadre nombredelamadre');
+    alias('fechaIngreso', 'matricula fecmatriculado fechaingreso fechamatriculado fecingreso');
+    alias('fechaRetiro', 'fechaderetiro fecretiro fecharetiro retiro');
+    alias('motivoRetiro', 'motivoretiro motivoderetiro');
+    alias('int_observaciones', 'observaciones observacion obs');
+    alias('numeroMatricula', 'nmatricula numeromatricula nromatricula nummatricula numerodematricula');
+    var INFORMATIVAS = /^(no|n|nro|num|numero|mat|local|sede|ciclo|estado|tipodematricula|fechaenviofamilia|ultimaactualizacionfamilia|matriculadopor|rutfuncionario|fechamatricula|ultimamodificacion|modificadopor)$/;
+    function compacto(h) { return norm(h).replace(/[^a-z0-9]/g, ''); }
     var campos = getCampos(true), porNombre = {}, tipos = {};
     campos.forEach(function (c) {
       tipos[c.id] = c.tipo;
-      porNombre[norm(etiquetaExport(c, campos))] = c.id; porNombre[norm(c.id)] = c.id;
-      if (!porNombre[norm(c.etiqueta)]) porNombre[norm(c.etiqueta)] = c.id;
+      porNombre[compacto(etiquetaExport(c, campos))] = c.id; porNombre[compacto(c.id)] = c.id;
+      if (!porNombre[compacto(c.etiqueta)]) porNombre[compacto(c.etiqueta)] = c.id;
     });
+    var usados = {};
     var mapa = filas[0].map(function (h) {
-      var n = norm(h);
-      var k = REG[n] || porNombre[n] || (/^nivel( (al que se matricula|\d{4}))?$/.test(n) ? 'curso' : null);
-      var informativa = /^(no|n°|ciclo|estado|fecha envio familia|ultima actualizacion familia|matriculado por|rut funcionario|fecha matricula|ultima modificacion|modificado por)$/.test(n);
-      if (n && !informativa) (k ? res.reconocidas : res.ignoradas).push(str(h).trim());
+      var n = compacto(h);
+      if (!n) return null;
+      var k = (REG[n] && REG[n].charAt(0) === '_' ? REG[n] : porNombre[n] || REG[n]) || (/^nivel(alquesematricula|\d{4})?$/.test(n) ? 'curso' : /^curso\d{4}$/.test(n) ? '_curso' : null);
+      if (k && usados[k] && k.charAt(0) !== '_') k = null; // si dos columnas dicen lo mismo, vale la primera
+      if (k) usados[k] = 1;
+      if (!INFORMATIVAS.test(n)) (k ? res.reconocidas : res.ignoradas).push(str(h).trim());
       return k;
     });
     var explicitoNivel = mapa.indexOf('curso') >= 0;
+    var conApellidosEst = mapa.indexOf('est_apellido_paterno') >= 0, conApellidosApo = mapa.indexOf('apo_apellido_paterno') >= 0;
     var existentes = {}, numeros = {};
     db.all('Fichas').forEach(function (f) { existentes[rutKey(f.rut)] = f; if (str(f.numeroMatricula).trim()) numeros[norm(f.numeroMatricula)] = rutKey(f.rut); });
     var nuevas = [];
     for (var r = 1; r < filas.length; r++) {
-      var row = filas[r], d = {}, cuerpo = '', dv = '', completo = '', cursoReg = '';
+      var row = filas[r], d = {}, cuerpo = '', dv = '', cursoReg = '';
       mapa.forEach(function (k, i) {
         if (!k) return;
         var v = str(row[i]).trim().replace(/^(\d+)\.0+$/, '$1');
         if (!v) { if (opciones.vaciasBorran && k.charAt(0) !== '_' && k !== 'curso' && k !== 'cursoAnterior') d[k] = ''; return; }
-        if (k === '_rut') { if (/[-kK]/.test(v) || v.replace(/\D/g, '').length >= 9) completo = v; else cuerpo = v.replace(/\D/g, ''); }
+        if (k === '_rut') { if (!cuerpo) cuerpo = v; }
         else if (k === '_dv') dv = v;
-        else if (k === '_rutCompleto') completo = v;
         else if (k === '_curso') cursoReg = limpiarCurso(v);
+        else if (k === '_nombreEst') { if (conApellidosEst) d.est_nombres = v; else separarNombre(v, true, 'est_', d); }
+        else if (k === '_nombreApo') { if (conApellidosApo) d.apo_nombres = v; else separarNombre(v, false, 'apo_', d); }
         else d[k] = v;
       });
-      var rut = completo ? rutFmt(completo) : (cuerpo ? rutFmt(cuerpo + dv) : '');
+      // RUT: con guion o K se toma completo; si hay columna DV se agrega; si no, el último carácter es el DV.
+      var rut = !cuerpo ? '' : /[-kK]/.test(cuerpo) || !dv ? rutFmt(cuerpo) : rutFmt(cuerpo.replace(/\D/g, '') + dv);
       if (!rut || rutKey(rut).length < 2) continue;
       for (var k in d) {
         if (!d[k]) continue;
@@ -1359,9 +1418,14 @@ function createCore_(env) {
         else if (tipos[k] === 'email') d[k] = d[k].toLowerCase();
         else if (tipos[k] === 'telefono') d[k] = normTel(d[k]);
       }
-      if (d.est_sexo) { var sx = d.est_sexo.toUpperCase(); d.est_sexo = sx === 'F' ? 'Femenino' : sx === 'M' ? 'Masculino' : d.est_sexo; }
-      if (dv && completo && rutKey(completo).length < 9 && !/[-kK]/.test(completo)) completo = completo + dv; // RUT completo sin guion + columna DV
-      if (d.curso) d.curso = limpiarCurso(d.curso);
+      if (d.est_sexo) { var sx = d.est_sexo.toUpperCase(); d.est_sexo = /^(F|FEM)/.test(sx) ? 'Femenino' : /^(M|MAS)/.test(sx) ? 'Masculino' : d.est_sexo; }
+      if (d.mad_nombre && !d.mad_situacion) d.mad_situacion = 'Registrar datos de la madre';
+      if (d.pad_nombre && !d.pad_situacion) d.pad_situacion = 'Registrar datos del padre';
+      if (d.apo_nombres && !d.apo_parentesco) { // el tutor coincide con la madre o el padre
+        var apoN = norm([d.apo_nombres, d.apo_apellido_paterno, d.apo_apellido_materno].join(' '));
+        if (d.mad_nombre && norm(d.mad_nombre) === apoN) d.apo_parentesco = 'Madre';
+        else if (d.pad_nombre && norm(d.pad_nombre) === apoN) d.apo_parentesco = 'Padre';
+      }      if (d.curso) d.curso = limpiarCurso(d.curso);
       if (d.cursoAnterior) d.cursoAnterior = limpiarCurso(d.cursoAnterior);
       if (cursoReg) {
         d.cursoAnterior = cursoReg;
@@ -3764,12 +3828,44 @@ var Staff = (function () {
   }
 
   /* Cargar o actualizar la base de datos desde Excel (registro del colegio o Excel descargado de la plataforma). */
+  /* Formato estándar de carga (plantilla) e instrucciones para que una IA traspase cualquier Excel a ese formato. */
+  var COLS_ESTANDAR = ['RUT', 'DV', 'Apellido paterno', 'Apellido materno', 'Nombres', 'Sexo', 'Fecha de nacimiento', 'Curso', 'Dirección', 'Comuna',
+    'Nombres apoderado', 'Apellido paterno apoderado', 'Apellido materno apoderado', 'RUT apoderado', 'Celular apoderado', 'Correo apoderado',
+    'Nombre completo de la madre', 'Nombre completo del padre', 'Fecha de retiro', 'Observaciones'];
+  function instruccionesIA() {
+    var anio = S.form.config.anio;
+    return 'Actúa como asistente de datos escolares. Te adjunto un archivo Excel con estudiantes de un colegio de Chile. Transfórmalo en un NUEVO archivo Excel (.xlsx) listo para cargar en nuestra plataforma de matrícula.\n\n' +
+      'FORMATO DEL ARCHIVO NUEVO\n- Una sola hoja llamada «Estudiantes».\n- Fila 1 = encabezados, escritos EXACTAMENTE así y en este orden:\n' + COLS_ESTANDAR.join(' | ') + '\n- Desde la fila 2, un estudiante por fila. Sin títulos, filas vacías, totales ni celdas combinadas.\n\n' +
+      'REGLAS\n' +
+      '1. RUT: solo el número, sin puntos, guion ni dígito verificador (ej.: 12345678). DV en su columna (0 a 9 o K mayúscula). Si viene completo («12.345.678-9»), sepáralo. Verifica el DV con el módulo 11 y avísame si alguno no corresponde (no lo cambies).\n' +
+      '2. Nombres del estudiante: separa en «Apellido paterno», «Apellido materno» y «Nombres». Si viene como «PÉREZ SOTO, JUAN ANDRÉS», lo que está antes de la coma son los apellidos. Respeta los apellidos compuestos (San Martín, De la Fuente, Del Río).\n' +
+      '3. Sexo: escribe «Femenino» o «Masculino» (F → Femenino, M → Masculino).\n' +
+      '4. Fechas (nacimiento y retiro): formato DD/MM/AAAA. Si vienen como número de Excel, conviértelas a fecha.\n' +
+      '5. Curso: el curso ACTUAL del estudiante (año ' + (anio - 1) + '), escrito así: «PreKinder A», «Kinder A», «1° Básico A» … «8° Básico B», «1° Medio A» … «4° Medio A» (número, símbolo °, Básico o Medio con tilde y la letra del curso).\n' +
+      '6. Apoderado/a: si viene el nombre completo en una sola columna (por ejemplo «Nombre Tutor» o «Apoderado»), sepáralo en nombres y apellidos (normalmente los dos últimos son los apellidos). Si el apoderado es la misma persona que la madre o el padre, igual completa sus columnas.\n' +
+      '7. Celular: 9 dígitos que comienzan con 9 (ej.: 912345678), sin +56, espacios ni guiones.\n' +
+      '8. Correos en minúsculas y sin espacios.\n' +
+      '9. Quita números, símbolos o textos extraños pegados a los nombres (ej.: «TORRES15615326» → «TORRES»). Nombres en mayúsculas, conservando las tildes y la Ñ.\n' +
+      '10. NO inventes datos: si un dato no aparece, deja la celda vacía. NO elimines estudiantes. Si un mismo RUT aparece dos veces, deja una sola fila combinando los datos.\n' +
+      '11. Las columnas del archivo original que no correspondan a ninguna de la lista, omítelas.\n\n' +
+      'AL TERMINAR\nEntrégame el archivo .xlsx para descargar y un breve resumen: cuántos estudiantes quedaron, cuántos por curso, y la lista de filas con problemas (RUT inválido, sin nombre, sin curso o fecha dudosa).';
+  }
+  async function copiarTexto(t) {
+    try { await navigator.clipboard.writeText(t); return true; }
+    catch (e) {
+      var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+      ta.remove(); return ok;
+    }
+  }
+
   function importarEstudiantes() {
     var lotes = [];
     UI.modal({
       title: '📥 Cargar o actualizar la base de datos', size: 'wide',
       html: '<ol class="steps"><li><div>Puede subir <b>su registro de estudiantes</b> (columnas Rut, DV, AL Paterno, AL Nombre, Curso, Apod …; <a href="#" id="pl-est">descargar plantilla</a>) ' +
-        'o el <b>Excel descargado desde la plataforma</b> («⬇ Descargar base de datos») después de corregirlo.</div></li>' +
+        'o el <b>Excel descargado desde la plataforma</b> («⬇ Descargar base de datos»). Se reconocen muchos nombres de columna (Rut/RUN, NombreAlumno, FechaNac, Nombre Tutor, FonoApod…).</div></li>' +
+        '<li><div><b>¿Su archivo tiene otro formato?</b> Copie las instrucciones y péguelas en una IA (ChatGPT, Gemini, Claude…) junto con su Excel: le devolverá el archivo listo para cargar.<div style="margin-top:8px"><button type="button" class="btn sm gold" id="ia-copiar">🤖 Copiar instrucciones para la IA</button></div></div></li>' +
         '<li><div>Los estudiantes se identifican por su <b>RUT</b>: si ya existe, se actualiza su ficha (<b>nunca se duplica</b>; si había fichas repetidas del mismo RUT, se unen en una). Se leen todas las hojas del archivo.</div></li></ol>' +
         '<label style="margin-top:16px">¿Qué hacer con los estudiantes que ya existen?</label><div class="opt-cards">' +
         '<label class="opt-card"><input type="radio" name="im-m" value="sobrescribir" checked><span>✅ Reemplazar todos los datos<small>Agrega los nuevos y reemplaza en los existentes todo lo que trae el Excel (nombres, cursos, apoderados…)</small></span></label>' +
@@ -3803,12 +3899,17 @@ var Staff = (function () {
       }],
       onOpen: function (el) {
         var dz = el.querySelector('#dz'), fx = el.querySelector('#fx');
+        el.querySelector('#ia-copiar').onclick = async function () {
+          var ok = await copiarTexto(instruccionesIA());
+          if (ok) { this.textContent = '✓ Instrucciones copiadas'; UI.toast('📋 Copiadas. Péguelas (Ctrl+V) en la IA y adjunte su Excel.', 'ok'); }
+          else UI.toast('No se pudo copiar automáticamente. Intente nuevamente.', 'bad');
+        };
         el.querySelector('#pl-est').onclick = function (e) {
           e.preventDefault();
-          var ws = XLSX.utils.aoa_to_sheet([['No', 'Rut', 'DV', 'AL Paterno', 'AP Materno', 'AL Nombre', 'Sexo', 'Nacimiento', 'Curso', 'Matrícula', 'Direccion', 'Apod Comuna', 'Apod Nombre', 'Apod Paterno', 'Apod Materno', 'Apod Celular', 'Apod Email', 'Fecha de retiro'],
-            [1, 12345678, 5, 'PÉREZ', 'SOTO', 'JUAN ANDRÉS', 'M', '15/03/2019', '1° Básico A', '01/03/2027', 'CALLE EJEMPLO 123', 'CONCEPCIÓN', 'MARÍA JOSÉ', 'SOTO', 'ROJAS', '912345678', 'correo@ejemplo.cl', '']]);
-          ws['!cols'] = [6, 11, 4, 14, 14, 22, 6, 12, 14, 12, 28, 16, 18, 14, 14, 13, 26, 14].map(function (w) { return { wch: w }; });
-          var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Registro');
+          var ws = XLSX.utils.aoa_to_sheet([COLS_ESTANDAR, ['12345678', '5', 'PÉREZ', 'SOTO', 'JUAN ANDRÉS', 'Masculino', '15/03/2019', '1° Básico A', 'CALLE EJEMPLO 123', 'CONCEPCIÓN',
+            'MARÍA JOSÉ', 'SOTO', 'ROJAS', '11111111-1', '912345678', 'correo@ejemplo.cl', 'MARÍA JOSÉ SOTO ROJAS', 'PEDRO PÉREZ LAGOS', '', '']]);
+          ws['!cols'] = COLS_ESTANDAR.map(function (h) { return { wch: Math.max(12, h.length + 2) }; });
+          var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Estudiantes');
           XLSX.writeFile(wb, 'plantilla_estudiantes.xlsx');
         };
         dz.onclick = function () { fx.click(); };
@@ -3822,9 +3923,11 @@ var Staff = (function () {
             lotes = [];
             wb.SheetNames.forEach(function (n) {
               var rows = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' });
-              var idx = rows.findIndex(function (r) { var h = r.map(norm); return h.indexOf('rut') >= 0 || h.indexOf('rut estudiante') >= 0; });
+              // fila de encabezados: la primera (de las 15 primeras) con una columna de RUT/RUN del estudiante
+              var esRut = function (x) { return /^(rut|run)(estudiante|alumnoa?|delestudiante|delalumno)?$/.test(norm(x).replace(/[^a-z0-9]/g, '')); };
+              var idx = rows.slice(0, 15).findIndex(function (r) { return r.some(esRut); });
               if (idx < 0) return;
-              var h = rows[idx].map(norm), cr = h.indexOf('rut') >= 0 ? h.indexOf('rut') : h.indexOf('rut estudiante');
+              var cr = rows[idx].findIndex(esRut);
               var filas = rows.slice(idx).filter(function (r, i) { return i === 0 || String(r[cr]).trim(); });
               if (filas.length > 1) lotes.push({ hoja: n, filas: filas, columnas: rows[idx].filter(function (x) { return String(x).trim(); }).length });
             });
@@ -4454,8 +4557,17 @@ var Staff = (function () {
     var enProc = faltan.filter(function (f) { return f.estado === 'en_proceso' || f.estado === 'desbloqueada'; }).length;
     function nombreItem(f) {
       var a = avanceFicha(f);
-      return '<div class="nombre-item" data-ver="' + esc(f.rut) + '"><div class="grow"><b>' + esc(UI.nombreEst(f)) + '</b><div class="small">' + chipG(grupo(f)) + '</div></div>' +
+      return '<div class="nombre-item" data-ver="' + esc(f.rut) + '"><div class="grow"><b>' + esc(UI.nombreEst(f)) + '</b></div>' +
         (completa(f) ? UI.badgeEstado(f.estado) : '<div class="mini-bar" title="' + a.pct + '% completado"><i style="width:' + a.pct + '%"></i></div><span class="small muted nowrap">' + a.pct + '%</span>') + '</div>';
+    }
+    // Pestañas desplegables por curso: al pinchar se abre la lista de ese curso.
+    function desplegables(arr, sonFaltan) {
+      return grupos.filter(function (g) { return arr.some(function (f) { return grupo(f) === g; }); }).map(function (g) {
+        var items = arr.filter(function (f) { return grupo(f) === g; }), total = vig.filter(function (f) { return grupo(f) === g; }).length;
+        return '<details class="desp" style="--cc:' + colorG(g) + '"' + (avanceSel ? ' open' : '') + '><summary>' + chipG(g) +
+          '<span class="desp-n">' + items.length + (sonFaltan ? ' de ' + total + ' faltan' : ' de ' + total + ' completas') + '</span><span class="grow"></span><span class="desp-chev">▾</span></summary>' +
+          '<div class="desp-b">' + items.map(nombreItem).join('') + '</div></details>';
+      }).join('');
     }
     function barraGrupo(g) {
       var l = vig.filter(function (f) { return grupo(f) === g; }), t = l.length || 1;
@@ -4481,9 +4593,9 @@ var Staff = (function () {
       (grupos.length > 1 && !avanceSel ? '<div style="margin-top:18px">' + barras + '<div class="legend" style="margin-top:6px"><span><i style="background:var(--ok)"></i>Matriculados</span><span><i style="background:var(--blue-2)"></i>Enviadas</span><span><i style="background:#f0b429"></i>En proceso</span><span><i style="background:#e9eef7"></i>Sin iniciar</span></div></div>' : '') +
       '</div></div></section>' +
       '<div class="listas-avance"><section class="card"><div class="card-h"><div class="sec-num">⏳</div><h3>Faltan (' + faltan.length + ')</h3></div>' +
-      (faltan.length ? faltan.map(nombreItem).join('') : '<p class="muted">Nadie pendiente.</p>') + '</section>' +
+      (faltan.length ? desplegables(faltan, true) : '<p class="muted">Nadie pendiente.</p>') + '</section>' +
       '<section class="card"><div class="card-h"><div class="sec-num">✅</div><h3>Completadas (' + hechas.length + ')</h3></div>' +
-      (hechas.length ? hechas.map(nombreItem).join('') : '<p class="muted">Aún no hay fichas completadas.</p>') + '</section></div>' +
+      (hechas.length ? desplegables(hechas, false) : '<p class="muted">Aún no hay fichas completadas.</p>') + '</section></div>' +
       '<section class="card" style="padding:0;overflow:hidden;margin-top:18px"><div class="curso-h"><h3>Detalle estudiante por estudiante</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>N°</th><th>Estudiante</th><th>Estado</th><th>Avance</th><th class="hide-sm">Apoderado/a</th><th></th></tr></thead><tbody>' +
       lista.map(function (f, i) {
         var a = avanceFicha(f), t = tel(f);
