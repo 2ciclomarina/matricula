@@ -622,7 +622,7 @@ function createCore_(env) {
   };
   var CICLOS = ['Preescolar', 'Primer Ciclo', 'Segundo Ciclo', 'Enseñanza Media', 'Otro'];
   // curso = nivel al que se matricula (año de la matrícula) · cursoAnterior = curso de procedencia
-  var FICHA_META = ['rut', 'numeroMatricula', 'curso', 'cursoAnterior', 'estado', 'editFamilia', 'editFuncionario', 'fechaLimite', 'bienvenidaEnviada', 'fechaActualizacion', 'claveHash', 'debeCambiarClave', 'videoVisto', 'fechaEnvio',
+  var FICHA_META = ['rut', 'numeroMatricula', 'curso', 'cursoAnterior', 'estado', 'editFamilia', 'editFuncionario', 'fechaLimite', 'bienvenidaEnviada', 'tipoMatricula', 'fechaActualizacion', 'claveHash', 'debeCambiarClave', 'videoVisto', 'fechaEnvio',
     'ultimaModificacion', 'modificadoPor', 'matriculadoPorNombre', 'matriculadoPorRut', 'fechaMatricula',
     'aceptaciones', 'fechaIngreso', 'fechaRetiro'];
   var HEADERS = {
@@ -691,6 +691,7 @@ function createCore_(env) {
     numInicioSegundoCiclo: '401',
     numInicioMedia: '701',
     calendario: '[]',           // días y horarios de matrícula por ciclo (JSON)
+    permitirRepitentes: 'NO',  // el Equipo de Gestión habilita (según cupos) matricular repitentes en el mismo curso
     promocionReglas: '',        // por nivel de origen: «letra» (1° Básico A → 2° Básico A) o «nivel» (se reagrupan después)
     portadaEtiqueta: 'Admisión y matrículas',   // textos de la portada (pestaña «Portada» del Equipo de Gestión)
     portadaTitulo: 'Un futuro que comienza',
@@ -866,6 +867,7 @@ function createCore_(env) {
     o.estado = f.estado || 'pendiente';
     o.nivel = nivelDe(f.curso); o.ciclo = cicloDe(f.curso);
     o.editFuncionario = si(f.editFuncionario);
+    o.tipoMatricula = tipoDe(f);
     return o;
   }
   function usuarioPublico(u) {
@@ -904,8 +906,13 @@ function createCore_(env) {
   function soloGestion(u) { if (u.rol !== 'gestion') fail('Solo el Equipo de Gestión puede realizar esta acción.'); }
   function puedeVer(u, f) {
     if (u.rol === 'gestion') return true;
-    var cs = lista(u.cursos).map(norm);
-    if (cs.indexOf(norm(f.curso)) >= 0 || cs.indexOf(norm(nivelDe(f.curso))) >= 0 || (f.cursoAnterior && cs.indexOf(norm(f.cursoAnterior)) >= 0)) return true;
+    // Curso con letra asignado (ej.: «Kinder A») = curso ACTUAL que el funcionario matricula (sus estudiantes pasen al curso o nivel que pasen).
+    // Nivel sin letra asignado (ej.: «1° Básico») = todas las fichas que se matriculan en ese nivel el próximo año (incluidos los nuevos).
+    var asignados = lista(u.cursos), conLetra = asignados.filter(function (c) { return /\s[A-Za-z]$/.test(c); }).map(norm),
+      niveles = asignados.filter(function (c) { return !/\s[A-Za-z]$/.test(c); }).map(norm);
+    if (f.cursoAnterior && conLetra.indexOf(norm(f.cursoAnterior)) >= 0) return true;
+    if (!f.cursoAnterior && conLetra.indexOf(norm(f.curso)) >= 0) return true; // nuevo asignado directamente a un curso con letra
+    if (niveles.indexOf(norm(nivelDe(f.curso))) >= 0) return true;
     return lista(u.fichas).map(rutKey).indexOf(rutKey(f.rut)) >= 0;
   }
   function asignarAMi(u, rut) { // si un funcionario crea o mueve una ficha fuera de sus cursos, la conserva asignada
@@ -1447,6 +1454,7 @@ function createCore_(env) {
     var f = familiaDe(ses), o = fichaPublica(f);
     getCampos(true).forEach(function (c) { if (/uso interno/i.test(c.seccion)) delete o[c.id]; });
     delete o.matriculadoPorRut;
+    delete o.tipoMatricula; // la familia no ve si es nuevo, promovido o repitente
     o.ventana = estadoVentana(f);
     o.formalizacion = formalizacionDe(f);
     o.solicitudPendiente = db.all('Solicitudes').some(function (s) { return s.tipo === 'apertura' && s.estado === 'pendiente' && rutKey(s.rut) === rutKey(f.rut); });
@@ -1658,13 +1666,14 @@ function createCore_(env) {
       var sx = norm(f.est_sexo);
       if (sx.charAt(0) === 'f') o.mujeres++; else if (sx.charAt(0) === 'm') o.hombres++;
       if (e === 'retirado') return;
-      var ci = cicloDe(f.curso), C = ciclos[ci] || (ciclos[ci] = { ciclo: ci, vigentes: 0, nuevos: 0, pie: 0, pieEval: 0, nee: 0, pueblos: 0, extranjeros: 0, diagnosticos: {}, pueblosDet: {} });
+      var ci = cicloDe(f.curso), C = ciclos[ci] || (ciclos[ci] = { ciclo: ci, vigentes: 0, nuevos: 0, repitentes: 0, pie: 0, pieEval: 0, nee: 0, pueblos: 0, extranjeros: 0, diagnosticos: {}, pueblosDet: {} });
       C.vigentes++;
       var pueblo = puebloConVitalidad(f.est_pueblo_originario);
       if (pueblo) { o.pueblos++; C.pueblos++; pueblos[pueblo] = (pueblos[pueblo] || 0) + 1; C.pueblosDet[pueblo] = (C.pueblosDet[pueblo] || 0) + 1; }
       var declarado = str(f.est_pueblo_originario).trim();
       if (declarado && !/no pertenece|prefiere no/i.test(declarado)) pueblosTodos[declarado] = (pueblosTodos[declarado] || 0) + 1;
       if (!str(f.cursoAnterior).trim()) { o.nuevos++; C.nuevos++; }
+      if (f.tipoMatricula === 'repitente') { o.repitentes++; C.repitentes++; }
       var pie = norm(f.sal_pie);
       if (pie === 'si') { o.pie++; C.pie++; } else if (pie.indexOf('evaluacion') >= 0) C.pieEval++;
       if (norm(f.sal_nee).indexOf('si') === 0 || norm(f.sal_nee).indexOf('evaluacion') >= 0) {
@@ -1686,7 +1695,7 @@ function createCore_(env) {
       porCiclo: CICLOS.filter(function (c) { return ciclos[c]; }).map(function (c) { return ciclos[c]; }), comunas: lista2(comunas), procedencias: lista2(procedencias) };
   };
   function nuevoContador(c) {
-    return { curso: c, nivel: nivelDe(c), ciclo: cicloDe(c), total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0, pueblos: 0, nuevos: 0, pie: 0 };
+    return { curso: c, nivel: nivelDe(c), ciclo: cicloDe(c), total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0, pueblos: 0, nuevos: 0, repitentes: 0, pie: 0 };
   }
 
   /* ---------- funcionarios: usuarios (Equipo de Gestión) ---------- */
@@ -1882,13 +1891,27 @@ function createCore_(env) {
     return { url: env.saveFile(a.nombre || 'portada.jpg', a.mime, a.base64) };
   };
 
+  /* Tipo de matrícula (solo lo ven los funcionarios): nuevo (SAE), regular promovido o regular repitente. */
+  function tipoDe(f) { return f.tipoMatricula === 'repitente' ? 'repitente' : (str(f.cursoAnterior).trim() ? 'promovido' : 'nuevo'); }
+  // Matricular como repitente en el MISMO curso actual (o deshacerlo). Requiere que el Equipo de Gestión lo haya habilitado.
+  A.marcarRepitente = function (p, ses) {
+    var u = staffDe(ses), f = fichaAccesible(u, p.rut);
+    if (u.rol !== 'gestion' && !si(getConfig().permitirRepitentes)) fail('La matrícula de repitentes no está habilitada. Solicítelo al Equipo de Gestión.');
+    if (f.estado === 'matriculada' && u.rol !== 'gestion') fail('La ficha ya está matriculada. Solo el Equipo de Gestión puede cambiarla.');
+    if (!str(f.cursoAnterior).trim()) fail('Un estudiante nuevo no puede marcarse como repitente.');
+    var patch = p.repite ? { tipoMatricula: 'repitente', curso: limpiarCurso(f.cursoAnterior) } : { tipoMatricula: '', curso: cursoDestino(f.cursoAnterior) };
+    patch.ultimaModificacion = env.now(); patch.modificadoPor = u.nombre;
+    updFicha(f.rut, patch);
+    log(u.nombre, p.repite ? 'Marcado como repitente' : 'Repitencia quitada', rutFmt(f.rut) + ' · ' + patch.curso);
+    return fichaPublica(findFicha(f.rut));
+  };
   A.reglasPromocion = function (p, ses) { soloGestion(staffDe(ses)); return reglasPromocion(); };
   // Recalcula el curso de destino de las fichas aún no matriculadas según las reglas (no toca estudiantes nuevos).
   A.aplicarPromocion = function (p, ses) {
     var u = staffDe(ses); soloGestion(u);
     var reglas = reglasPromocion(), n = 0;
     db.all('Fichas').forEach(function (f) {
-      if (!f.rut || !str(f.cursoAnterior).trim() || f.estado === 'matriculada' || f.estado === 'retirado') return;
+      if (!f.rut || !str(f.cursoAnterior).trim() || f.estado === 'matriculada' || f.estado === 'retirado' || f.tipoMatricula === 'repitente') return;
       var dest = cursoDestino(f.cursoAnterior, reglas);
       if (norm(dest) !== norm(f.curso)) { updFicha(f.rut, { curso: dest, ultimaModificacion: env.now(), modificadoPor: u.nombre }); n++; }
     });
@@ -2040,7 +2063,8 @@ function createCore_(env) {
   function formalizacionDe(f) {
     var cfg = getConfig(), cal = parseJSON(cfg.calendario, []) || [], ciclo = cicloDe(f.curso), hoy = env.now().slice(0, 10);
     var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-    var mios = cal.filter(function (x) { return x && x.fecha && (x.ciclo === ciclo || x.ciclo === 'Todos los ciclos'); }).sort(function (a, b) { return (a.fecha + a.desde) < (b.fecha + b.desde) ? -1 : 1; });
+    var tipo = tipoDe(f);
+    var mios = cal.filter(function (x) { return x && x.fecha && (x.ciclo === ciclo || x.ciclo === 'Todos los ciclos') && (!x.tipo || x.tipo === 'todos' || x.tipo === tipo); }).sort(function (a, b) { return (a.fecha + a.desde) < (b.fecha + b.desde) ? -1 : 1; });
     var it = mios.filter(function (x) { return x.fecha >= hoy; })[0] || mios[0], fechaTxt = '';
     if (it) { var d = new Date(it.fecha + 'T12:00:00'); if (!isNaN(d.getTime())) fechaTxt = DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
     return { texto: cfg.avisoFormalizacion, ciclo: ciclo, fecha: it ? it.fecha : '', fechaTxt: fechaTxt, desde: it ? str(it.desde) : '', hasta: it ? str(it.hasta) : '', lugar: it ? str(it.lugar) : '' };
@@ -2775,7 +2799,7 @@ var UI = (function () {
       var mio = destacar && (it.ciclo === destacar || it.ciclo === 'Todos los ciclos');
       return '<div class="cal-item' + (mio ? ' mio' : '') + (pasado ? ' pasado' : '') + '">' +
         '<div class="cal-dia"><b>' + (valida ? d.getDate() : '') + '</b><span>' + (valida ? MESES[d.getMonth()] : '') + '</span></div>' +
-        '<div class="cal-info"><div class="cal-ciclo">' + esc(it.ciclo || '') + (mio ? ' <span class="badge b-gold">Su ciclo</span>' : '') + '</div>' +
+        '<div class="cal-info"><div class="cal-ciclo">' + esc(it.ciclo || '') + (it.tipo && it.tipo !== 'todos' ? ' <span class="small muted">· ' + esc({ nuevo: 'Nuevos (SAE)', promovido: 'Regulares promovidos', repitente: 'Regulares repitentes' }[it.tipo] || '') + '</span>' : '') + (mio ? ' <span class="badge b-gold">Su ciclo</span>' : '') + '</div>' +
         '<div class="cal-hora">' + (valida ? DIAS[d.getDay()] + ' · ' : '') + esc(it.desde || '') + (it.hasta ? '–' + esc(it.hasta) : '') + ' h</div>' +
         (it.lugar ? '<div class="cal-lugar">📍 ' + esc(it.lugar) + '</div>' : '') + '</div></div>';
     }).join('');
@@ -3349,15 +3373,15 @@ var Staff = (function () {
   function grupoDe(f) { return filtro.agrupar === 'anterior' ? (f.cursoAnterior || 'Estudiantes nuevos') : (f.curso || 'Sin nivel'); }
   async function vFichas(recargar) {
     if (recargar !== false) fichas = await UI.api('listarFichas');
-    filtro.agrupar = filtro.agrupar || 'nivel';
+    filtro.agrupar = filtro.agrupar || (gestion() ? 'nivel' : 'anterior');
     var cursos = [], anio = S.form.config.anio;
     ordenarPorGrupo().forEach(function (f) { var g = grupoDe(f); if (cursos.indexOf(g) < 0) cursos.push(g); });
     if (cursos.indexOf(filtro.curso) < 0) filtro.curso = '';
     main().innerHTML = UI.calendarioHtml(S.form.config, '') + '<div class="page-h acciones"><div><div class="eyebrow">Proceso de matrícula ' + esc(anio) + '</div><h2>Fichas de matrícula</h2></div><span class="badge b-blue">' + fichas.length + ' estudiantes</span><span class="grow"></span>' +
       '<button class="btn gold" data-a="nueva">➕ Nuevo estudiante</button>' +
-      (gestion() ? '<button class="btn ghost sec" data-a="habilitar">🔓 Habilitar edición</button><button class="btn ghost sec" data-a="importar">📥 Cargar / actualizar base</button><button class="btn ghost sec" data-a="descargar">⬇ Descargar base de datos</button><button class="btn bad sec" data-a="borrar-todo" title="Eliminar todas las fichas">🗑 Eliminar todas las fichas</button>' :
+      (gestion() ? '<button class="btn ghost" data-a="organizacion">⚙️ Organización ' + esc(anio) + '</button><button class="btn ghost sec" data-a="habilitar">🔓 Habilitar edición</button><button class="btn ghost sec" data-a="importar">📥 Cargar / actualizar base</button><button class="btn ghost sec" data-a="descargar">⬇ Descargar base de datos</button><button class="btn bad sec" data-a="borrar-todo" title="Eliminar todas las fichas">🗑 Eliminar todas las fichas</button>' :
         '<button class="btn ghost sec" data-a="exportar">⬇ Exportar Excel</button>') + '</div>' +
-      '<div class="toolbar"><div class="seg" id="fl-agr"><button data-g="nivel" class="' + (filtro.agrupar === 'nivel' ? 'active' : '') + '">Por nivel ' + esc(anio) + '</button><button data-g="anterior" class="' + (filtro.agrupar === 'anterior' ? 'active' : '') + '">Por curso de procedencia</button></div>' +
+      '<div class="toolbar"><div class="seg" id="fl-agr"><button data-g="nivel" class="' + (filtro.agrupar === 'nivel' ? 'active' : '') + '">Por curso ' + esc(anio) + '</button><button data-g="anterior" class="' + (filtro.agrupar === 'anterior' ? 'active' : '') + '">Por curso actual ' + esc(anio - 1) + '</button></div>' +
       '<select id="fl-curso"><option value="">' + (filtro.agrupar === 'anterior' ? 'Todos los cursos' : 'Todos los niveles') + '</option>' + cursos.map(function (c) { return '<option' + (c === filtro.curso ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
       '<select id="fl-estado"><option value="">Todos los estados</option>' + Object.keys(S.form.estados).map(function (k) { return '<option value="' + k + '"' + (k === filtro.estado ? ' selected' : '') + '>' + esc(S.form.estados[k]) + '</option>'; }).join('') + '</select>' +
       '<input class="search" id="fl-q" type="text" placeholder="🔎 Buscar por nombre, RUT o apoderado…" value="' + esc(filtro.q) + '"></div><div id="lista"></div>';
@@ -3409,9 +3433,9 @@ var Staff = (function () {
         g.items.map(function (f, i) {
           return '<tr><td class="muted">' + (i + 1) + '</td><td class="num-mat">' + esc(f.numeroMatricula || '—') + '</td><td><a href="#" class="name" data-a="editar" data-rut="' + esc(f.rut) + '">' + esc(UI.nombreEst(f)) + '</a></td><td class="nowrap">' + esc(f.rut) + '</td>' +
             '<td class="small nowrap">' + esc(anterior ? f.curso : (f.cursoAnterior || 'Nuevo/a')) + '</td>' +
-            '<td class="hide-sm small">' + esc(UI.nombreApo(f) || '—') + (f.apo_celular ? '<br><span class="muted">📱 ' + esc(f.apo_celular) + '</span>' : '') + '</td><td>' + UI.badgeEstado(f.estado) + marcasEdicion(f) + '</td>' +
+            '<td class="hide-sm small">' + esc(UI.nombreApo(f) || '—') + (f.apo_celular ? '<br><span class="muted">📱 ' + esc(f.apo_celular) + '</span>' : '') + '</td><td>' + UI.badgeEstado(f.estado) + marcasEdicion(f) + badgeTipo(f) + '</td>' +
             '<td class="hide-sm hide-md small muted">' + esc(f.ultimaModificacion || '') + '<br>' + esc(f.modificadoPor || '') + '</td>' +
-            '<td><div class="acts"><button class="icon-btn" title="Ver / editar" data-a="editar" data-rut="' + esc(f.rut) + '">✏️</button>' +
+            '<td><div class="acts"><button class="icon-btn" title="Ver / editar" data-a="editar" data-rut="' + esc(f.rut) + '">✏️</button>' + botonRepite(f) +
             '<button class="icon-btn" title="Imprimir" data-a="imprimir" data-rut="' + esc(f.rut) + '">🖨</button>' +
             '<button class="icon-btn" title="Descargar PDF" data-a="pdf" data-rut="' + esc(f.rut) + '">⬇</button>' +
             '<button class="icon-btn wa" title="Compartir por WhatsApp" data-a="wa" data-rut="' + esc(f.rut) + '">💬</button></div></td></tr>';
@@ -3419,6 +3443,59 @@ var Staff = (function () {
     }).join('');
   }
   function porRut(rut) { return fichas.filter(function (f) { return f.rut === rut; })[0]; }
+  /* ---- tipo de matrícula (solo funcionarios) y repitentes ---- */
+  var TIPO_TXT = { nuevo: '🆕 Nuevo (SAE)', promovido: 'Regular promovido', repitente: '🔁 Regular repitente' };
+  function badgeTipo(f) {
+    if (f.tipoMatricula === 'nuevo') return ' <span class="badge b-blue" title="Estudiante nuevo (SAE)">🆕 Nuevo</span>';
+    if (f.tipoMatricula === 'repitente') return ' <span class="badge b-gold" title="Repite en ' + esc(f.curso) + '">🔁 Repitente</span>';
+    return '';
+  }
+  function puedeRepitente(f) { return !!f.cursoAnterior && (gestion() || UI.si(S.form.config.permitirRepitentes)) && (f.estado !== 'matriculada' || gestion()); }
+  function botonRepite(f) {
+    if (!puedeRepitente(f)) return '';
+    var r = f.tipoMatricula === 'repitente';
+    return '<button class="icon-btn" title="' + (r ? 'Quitar repitencia (vuelve a ' + esc(CoreUtil.nivelDe(CoreUtil.siguienteCurso(f.cursoAnterior))) + ')' : 'Matricular como repitente en ' + esc(f.cursoAnterior)) + '" data-a="repite" data-rut="' + esc(f.rut) + '"' + (r ? ' style="background:#fff4d6"' : '') + '>🔁</button>';
+  }
+  async function cambiarRepitencia(f) {
+    var r = f.tipoMatricula === 'repitente';
+    var ok = await UI.confirm(r ? '¿Quitar la repitencia?' : '¿Matricular como repitente?',
+      r ? '<b>' + esc(nombreCompleto(f)) + '</b> volverá a pasar al curso siguiente según las reglas del establecimiento.' :
+        '<b>' + esc(nombreCompleto(f)) + '</b> se matriculará en el <b>mismo curso: ' + esc(f.cursoAnterior) + '</b> como <b>regular repitente</b>. La familia no verá esta indicación.', r ? 'Quitar' : '🔁 Sí, repite', r ? '' : 'gold');
+    if (!ok) return null;
+    var nf = await UI.intentar(function () { return UI.api('marcarRepitente', { rut: f.rut, repite: !r }); }, 'Guardando…');
+    if (nf) { actualizarLista(nf); UI.toast(r ? 'Repitencia quitada' : '🔁 Marcado como repitente en ' + nf.curso, 'ok'); }
+    return nf;
+  }
+
+  /* ⚙️ Organización del año: qué niveles quedan sin letra y si se permiten repitentes (sin entrar a cada ficha). */
+  async function organizacion() {
+    var reglas = await UI.intentar(function () { return UI.api('reglasPromocion'); }, 'Cargando…');
+    if (!reglas) return;
+    var anio = S.form.config.anio, niveles = (S.form.niveles || []).filter(function (n) { return !/egresad/i.test(CoreUtil.siguienteCurso(n)); });
+    var r = await UI.modal({
+      title: '⚙️ Organización ' + esc(anio), size: 'wide',
+      html: '<h4 style="margin:0 0 6px">1. Niveles ' + esc(anio) + ' que quedarán SIN letra (se asignan después)</h4>' +
+        '<p class="muted small" style="margin-top:0">Los demás estudiantes antiguos <b>mantienen su letra</b> (ej.: 2° Básico A → 3° Básico A). Los docentes y asistentes siempre matriculan según el <b>curso actual ' + esc(anio - 1) + '</b> que tienen asignado, aunque el curso ' + esc(anio) + ' quede sin letra.</p>' +
+        '<div class="grid-3" style="gap:8px 14px;background:var(--sky-2);padding:12px;border-radius:12px">' + niveles.map(function (n) {
+          var dest = CoreUtil.nivelDe(CoreUtil.siguienteCurso(n));
+          return '<label class="check" style="font-weight:600"><input type="checkbox" data-sl="' + esc(n) + '"' + (reglas[n] === 'nivel' ? ' checked' : '') + '><span>' + esc(dest) + ' ' + esc(anio) + ' <span class="small muted">(desde ' + esc(n) + ')</span></span></label>';
+        }).join('') + '</div>' +
+        '<h4 style="margin:20px 0 6px">2. Matrícula de repitentes</h4>' +
+        '<label class="check"><input type="checkbox" id="org-rep"' + (UI.si(S.form.config.permitirRepitentes) ? ' checked' : '') + '><span>Permitir que docentes y asistentes matriculen <b>repitentes en el mismo curso</b> (botón 🔁 en la lista). Habilítelo según los cupos disponibles; el Equipo de Gestión siempre puede hacerlo.</span></label>',
+      buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: '💾 Guardar y aplicar', cls: 'ok', onClick: function (el) {
+        var o = {}; UI.$$('[data-sl]', el).forEach(function (x) { o[x.dataset.sl] = x.checked ? 'nivel' : 'letra'; });
+        return { reglas: o, rep: el.querySelector('#org-rep').checked };
+      } }]
+    });
+    if (!r) return;
+    var ok = await UI.intentar(function () { return UI.api('guardarConfig', { config: { promocionReglas: JSON.stringify(r.reglas), permitirRepitentes: r.rep ? 'SI' : 'NO' } }); }, 'Guardando…');
+    if (!ok) return;
+    var ap = await UI.intentar(function () { return UI.api('aplicarPromocion'); }, 'Aplicando a las fichas…');
+    await refrescarForm();
+    if (ap) await UI.success('Organización guardada', '<b>' + ap.actualizadas + '</b> fichas actualizaron su curso ' + esc(anio) + '. Los niveles sin letra aparecen marcados en la lista; repártalos con «🔀 Asignar cursos».' + (r.rep ? '<br>🔁 Matrícula de repitentes habilitada.' : ''));
+    ir('fichas');
+  }
+
   function clickFichas(e) {
     var b = e.target.closest('[data-a]'); if (!b) return;
     e.preventDefault();
@@ -3435,6 +3512,8 @@ var Staff = (function () {
     else if (a === 'habilitar') modalHabilitar(null);
     else if (a === 'borrar-todo') borrarTodo();
     else if (a === 'asignar-cursos') asignarCursos(b.dataset.curso);
+    else if (a === 'organizacion') organizacion();
+    else if (a === 'repite') cambiarRepitencia(f).then(function (nf) { if (nf) pintarLista(); });
   }
 
   function nuevaFicha() {
@@ -3550,10 +3629,10 @@ var Staff = (function () {
   function exportarExcel(lista, modo, campos, nombre) {
     campos = campos || S.form.campos;
     var anio = S.form.config.anio;
-    var head = ['N° matrícula', 'Nivel ' + anio, 'Ciclo', 'Curso de procedencia', 'RUT estudiante', 'Estado'].concat(campos.map(function (c) { return CoreUtil.etiquetaExport(c, campos); }),
+    var head = ['N° matrícula', 'Nivel ' + anio, 'Ciclo', 'Curso de procedencia', 'Tipo de matrícula', 'RUT estudiante', 'Estado'].concat(campos.map(function (c) { return CoreUtil.etiquetaExport(c, campos); }),
       ['Fecha envío familia', 'Última actualización familia', 'Matriculado por', 'RUT funcionario', 'Fecha matrícula', 'Última modificación', 'Modificado por']);
     function fila(f) {
-      return [f.numeroMatricula || '', f.curso, CoreUtil.cicloDe(f.curso), f.cursoAnterior || '', f.rut, S.form.estados[f.estado] || f.estado].concat(campos.map(function (c) { return f[c.id] || ''; }),
+      return [f.numeroMatricula || '', f.curso, CoreUtil.cicloDe(f.curso), f.cursoAnterior || '', TIPO_TXT[f.tipoMatricula] || '', f.rut, S.form.estados[f.estado] || f.estado].concat(campos.map(function (c) { return f[c.id] || ''; }),
         [f.fechaEnvio || '', f.fechaActualizacion || '', f.matriculadoPorNombre || '', f.matriculadoPorRut || '', f.fechaMatricula || '', f.ultimaModificacion || '', f.modificadoPor || '']);
     }
     var grupos = {}, orden = [];
@@ -3711,6 +3790,7 @@ var Staff = (function () {
       '<section class="card"><div class="editor-meta">' +
       '<div><label for="m-num">N° de matrícula</label>' + (gestion() && mat ? '<input id="m-num" value="' + esc(f.numeroMatricula || '') + '">' : '<div class="meta-v num-mat" style="font-size:20px">' + esc(f.numeroMatricula || '— (se asigna al matricular)') + '</div>') + '</div>' +
       '<div><label>RUT estudiante</label><div class="meta-v">' + esc(f.rut) + '</div></div>' +
+      '<div><label>Tipo de matrícula <span class="small muted">(no lo ve la familia)</span></label><div class="meta-v">' + esc(TIPO_TXT[f.tipoMatricula] || '') + '</div>' + (f.cursoAnterior && (gestion() || UI.si(S.form.config.permitirRepitentes)) && (f.estado !== 'matriculada' || gestion()) ? '<button class="btn sm ghost" style="margin-top:6px" data-e="repite">' + (f.tipoMatricula === 'repitente' ? '↩ Quitar repitencia' : '🔁 Matricular como repitente') + '</button>' : '') + '</div>' +
       '<div><label for="m-ant">Curso de procedencia</label>' + selAnterior('m-ant', f.cursoAnterior || '', !puede) + '</div>' +
       '<div><label for="m-curso">Curso o nivel ' + esc(anio) + '</label>' + selCurso2027('m-curso', f.curso, !puede, !f.cursoAnterior && !gestion()) + (!f.cursoAnterior ? '<small class="help">Estudiante nuevo: se indica el nivel; la letra la asigna el Equipo de Gestión.</small>' : '') + '</div>' +
       '<div><label for="m-estado">Estado</label><select id="m-estado"' + (puede && (!mat || gestion()) ? '' : ' disabled') + '>' + estados.map(function (k) { return '<option value="' + k + '"' + (k === f.estado ? ' selected' : '') + '>' + esc(S.form.estados[k]) + '</option>'; }).join('') + '</select></div>' +
@@ -3838,6 +3918,7 @@ var Staff = (function () {
       return;
     }
     if (a === 'habilitar') return modalHabilitar(f);
+    if (a === 'repite') { var nf = await cambiarRepitencia(f); if (nf) { ed.f = nf; pintarEditor(); } return; }
     if (a === 'pedir-apertura') {
       var mot = await UI.modal({ title: '📨 Solicitar apertura de la ficha', html: '<p class="muted" style="margin-top:0">La ficha está cerrada. Indique qué necesita corregir; el Equipo de Gestión revisará la solicitud.</p><div class="field"><label>Motivo</label><textarea id="pa-m" rows="3"></textarea></div>',
         buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, { text: 'Enviar solicitud', cls: 'gold', onClick: function (el) { var v = el.querySelector('#pa-m').value.trim(); if (v.length < 5) { UI.toast('Indique el motivo', 'bad'); return false; } return v; } }] });
@@ -3943,9 +4024,9 @@ var Staff = (function () {
   function tarjetasInclusion(st) {
     var pc = st.porCiclo || [];
     if (!pc.length) return '';
-    var T = { vigentes: 0, nuevos: 0, pie: 0, pieEval: 0, nee: 0, pueblos: 0, extranjeros: 0 };
+    var T = { vigentes: 0, nuevos: 0, repitentes: 0, pie: 0, pieEval: 0, nee: 0, pueblos: 0, extranjeros: 0 };
     pc.forEach(function (c) { for (var k in T) T[k] += c[k] || 0; });
-    function filaC(c, cls, n) { return '<tr class="' + (cls || '') + '"><td>' + esc(n || c.ciclo) + '</td><td><b>' + c.vigentes + '</b></td><td>' + c.nuevos + '</td><td>' + c.pie + '</td><td>' + c.pieEval + '</td><td>' + c.nee + '</td><td>' + c.pueblos + '</td><td>' + c.extranjeros + '</td></tr>'; }
+    function filaC(c, cls, n) { return '<tr class="' + (cls || '') + '"><td>' + esc(n || c.ciclo) + '</td><td><b>' + c.vigentes + '</b></td><td>' + c.nuevos + '</td><td>' + (c.repitentes || 0) + '</td><td>' + c.pie + '</td><td>' + c.pieEval + '</td><td>' + c.nee + '</td><td>' + c.pueblos + '</td><td>' + c.extranjeros + '</td></tr>'; }
     var diags = {};
     pc.forEach(function (c) { Object.keys(c.diagnosticos || {}).forEach(function (d) { diags[d] = 1; }); });
     var dl = Object.keys(diags).sort();
@@ -3959,7 +4040,7 @@ var Staff = (function () {
     return '<div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi k1"><span class="i">🆕</span><div class="v">' + T.nuevos + '</div><div class="l">Estudiantes nuevos (sin curso de procedencia)</div></div>' +
       '<div class="kpi k2"><span class="i">🧩</span><div class="v">' + T.pie + '</div><div class="l">Estudiantes PIE' + (T.pieEval ? ' · ' + T.pieEval + ' en evaluación' : '') + '</div></div>' +
       '<div class="kpi k4"><span class="i">🌎</span><div class="v">' + T.extranjeros + '</div><div class="l">Estudiantes extranjeros</div></div></div>' +
-      '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Inclusión y diversidad por ciclo</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>Ciclo</th><th>Vigentes</th><th>Nuevos</th><th>PIE</th><th>PIE en evaluación</th><th>Con NEE</th><th>Pueblos orig.</th><th>Extranjeros</th></tr></thead><tbody>' +
+      '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Inclusión y diversidad por ciclo</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>Ciclo</th><th>Vigentes</th><th>Nuevos</th><th>Repitentes</th><th>PIE</th><th>PIE en evaluación</th><th>Con NEE</th><th>Pueblos orig.</th><th>Extranjeros</th></tr></thead><tbody>' +
       pc.map(function (c) { return filaC(c); }).join('') + filaC(T, 'total', 'TOTAL') + '</tbody></table></div></section>' +
       (dl.length ? '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Estudiantes con NEE según diagnóstico</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>Diagnóstico</th>' +
         pc.map(function (c) { return '<th>' + esc(c.ciclo) + '</th>'; }).join('') + '<th>Total</th></tr></thead><tbody>' +
@@ -4151,7 +4232,7 @@ var Staff = (function () {
         '<div class="field"><label>Nombre completo<span class="req">*</span></label><input id="u-nom" value="' + esc(u.nombre) + '" placeholder="Nombre Apellido Apellido"></div>' +
         '<div class="field"><label>RUT (aparece en la firma de matrícula)<span class="req">*</span></label><input id="u-rut" value="' + esc(u.rut) + '" placeholder="12345678-9"></div>' +
         '<div class="field"><label>Perfil<span class="req">*</span></label><select id="u-rol"><option value="docente">Docente</option><option value="asistente">Asistente de Educación</option><option value="gestion">Equipo de Gestión</option></select></div>' +
-        '<div class="field full" id="u-asig"><label>Cursos de procedencia asignados (ej.: su jefatura actual)</label><div class="grid-3" style="gap:6px 14px;background:var(--sky-2);padding:12px;border-radius:10px">' +
+        '<div class="field full" id="u-asig"><label>Curso actual (' + esc(S.form.config.anio - 1) + ') que matricula · ej.: su jefatura</label><div class="grid-3" style="gap:6px 14px;background:var(--sky-2);padding:12px;border-radius:10px">' +
         cs.map(function (c) { return '<label class="check" style="font-weight:600"><input type="checkbox" data-c value="' + esc(c) + '"' + (u.cursos.indexOf(c) >= 0 ? ' checked' : '') + '>' + esc(c) + '</label>'; }).join('') + '</div>' +
         '<label style="margin-top:12px">…o niveles ' + esc(S.form.config.anio) + ' asignados (ve todas las fichas que se matriculan en ese nivel)</label><div class="grid-3" style="gap:6px 14px;background:#fffaf0;padding:12px;border-radius:10px">' +
         S.form.niveles.filter(function (n) { return cs.indexOf(n) < 0; }).map(function (c) { return '<label class="check" style="font-weight:600"><input type="checkbox" data-c value="' + esc(c) + '"' + (u.cursos.indexOf(c) >= 0 ? ' checked' : '') + '>' + esc(c) + '</label>'; }).join('') + '</div></div>' +
@@ -4675,8 +4756,9 @@ var Staff = (function () {
     }
     function pintarCal() {
       UI.$('#cal-ed').innerHTML = cal.length ? cal.map(function (it, i) {
-        return '<div class="grid-3" style="grid-template-columns:1.2fr 1fr .7fr .7fr 1.4fr auto;gap:8px;margin-bottom:8px;align-items:center" data-ci="' + i + '">' +
+        return '<div class="grid-3" style="grid-template-columns:1.1fr 1.1fr 1fr .7fr .7fr 1.2fr auto;gap:8px;margin-bottom:8px;align-items:center" data-ci="' + i + '">' +
           '<select data-k="ciclo">' + CIC.map(function (x) { return '<option' + (x === it.ciclo ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select>' +
+          '<select data-k="tipo">' + [['todos', 'Todos los estudiantes'], ['nuevo', 'Nuevos (SAE)'], ['promovido', 'Regulares promovidos'], ['repitente', 'Regulares repitentes']].map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === (it.tipo || 'todos') ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select>' +
           '<input type="date" data-k="fecha" value="' + esc(it.fecha || '') + '"><input type="time" data-k="desde" value="' + esc(it.desde || '') + '"><input type="time" data-k="hasta" value="' + esc(it.hasta || '') + '">' +
           '<input data-k="lugar" placeholder="Lugar (opcional)" value="' + esc(it.lugar || '') + '"><button class="icon-btn" data-cdel="' + i + '" title="Quitar">🗑</button></div>';
       }).join('') : '<p class="small muted">Aún no hay días cargados.</p>';
@@ -4713,7 +4795,7 @@ var Staff = (function () {
     };
     UI.$('#cal-ed').oninput = UI.$('#cal-ed').onchange = function (e) { var r0 = e.target.closest('[data-ci]'); if (r0 && e.target.dataset.k) cal[+r0.dataset.ci][e.target.dataset.k] = e.target.value; };
     UI.$('#cal-ed').onclick = function (e) { var b = e.target.closest('[data-cdel]'); if (b) { cal.splice(+b.dataset.cdel, 1); pintarCal(); } };
-    UI.$('#cal-add').onclick = function () { cal.push({ ciclo: 'Preescolar', fecha: '', desde: '08:30', hasta: '13:00', lugar: '' }); pintarCal(); };
+    UI.$('#cal-add').onclick = function () { cal.push({ ciclo: 'Preescolar', tipo: 'todos', fecha: '', desde: '08:30', hasta: '13:00', lugar: '' }); pintarCal(); };
     UI.$('#pv-ver').href = location.pathname + (window.APP_CONFIG.API_URL ? '' : '?demo') + '#portada';
     UI.$('#pf-save').onclick = async function () {
       var cfg = leerTextos();
