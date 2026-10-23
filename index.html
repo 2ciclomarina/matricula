@@ -563,6 +563,7 @@ tr.total td { background: var(--navy); color: #fff; font-weight: 800; }
 .aviso-formal { display: flex; gap: 14px; align-items: flex-start; background: linear-gradient(120deg, #eef4ff, #f8fbff); border: 1.5px solid #b9cff3; border-radius: var(--radius); padding: 16px 18px; margin-top: 18px; }
 .aviso-formal .ico { font-size: 28px; }
 .aviso-formal b.t { color: var(--navy); }
+[data-regla].seg { flex-wrap: wrap; }
 
 </style>
 </head>
@@ -690,6 +691,7 @@ function createCore_(env) {
     numInicioSegundoCiclo: '401',
     numInicioMedia: '701',
     calendario: '[]',           // días y horarios de matrícula por ciclo (JSON)
+    promocionReglas: '',        // por nivel de origen: «letra» (1° Básico A → 2° Básico A) o «nivel» (se reagrupan después)
     portadaEtiqueta: 'Admisión y matrículas',   // textos de la portada (pestaña «Portada» del Equipo de Gestión)
     portadaTitulo: 'Un futuro que comienza',
     portadaDestacado: 'aquí.',
@@ -903,7 +905,7 @@ function createCore_(env) {
   function puedeVer(u, f) {
     if (u.rol === 'gestion') return true;
     var cs = lista(u.cursos).map(norm);
-    if (cs.indexOf(norm(f.curso)) >= 0 || (f.cursoAnterior && cs.indexOf(norm(f.cursoAnterior)) >= 0)) return true;
+    if (cs.indexOf(norm(f.curso)) >= 0 || cs.indexOf(norm(nivelDe(f.curso))) >= 0 || (f.cursoAnterior && cs.indexOf(norm(f.cursoAnterior)) >= 0)) return true;
     return lista(u.fichas).map(rutKey).indexOf(rutKey(f.rut)) >= 0;
   }
   function asignarAMi(u, rut) { // si un funcionario crea o mueve una ficha fuera de sus cursos, la conserva asignada
@@ -1208,6 +1210,23 @@ function createCore_(env) {
   }
 
   /* Importa filas con el formato del Excel "Registro Estudiantes" (encabezados en la fila 0). */
+  /* Reglas de promoción: en los cambios donde los cursos se reagrupan (por defecto Kínder → 1° Básico,
+     4° → 5° Básico y 8° Básico → 1° Medio) el estudiante pasa solo al nivel; en los demás mantiene su letra. */
+  var REAGRUPAN_DEF = ['kinder', '4° basico', '8° basico'];
+  function reglasPromocion() {
+    var r = parseJSON(getConfig().promocionReglas, null);
+    if (!r || typeof r !== 'object') { r = {}; getNiveles().forEach(function (n) { r[n] = REAGRUPAN_DEF.indexOf(norm(n)) >= 0 ? 'nivel' : 'letra'; }); }
+    return r;
+  }
+  function cursoDestino(anterior, reglas) {
+    var sig = siguienteCurso(anterior);
+    if (/egresad/i.test(sig)) return sig;
+    reglas = reglas || reglasPromocion();
+    var origen = nivelDe(anterior), regla = reglas[origen];
+    if (!regla) Object.keys(reglas).forEach(function (k) { if (norm(k) === norm(origen)) regla = reglas[k]; });
+    if (!regla) regla = REAGRUPAN_DEF.indexOf(norm(origen)) >= 0 ? 'nivel' : 'letra';
+    return regla === 'letra' ? sig : nivelDe(sig);
+  }
   function siguienteCurso(c) {
     var n = norm(c), m = limpiarCurso(c).match(/\s([A-Za-z])$/), suf = m ? ' ' + m[1].toUpperCase() : '', num = parseInt(n, 10);
     if (/pre ?kinder/.test(n)) return 'Kinder' + suf;
@@ -1286,7 +1305,7 @@ function createCore_(env) {
       if (d.cursoAnterior) d.cursoAnterior = limpiarCurso(d.cursoAnterior);
       if (cursoReg) {
         d.cursoAnterior = cursoReg;
-        if (!explicitoNivel) d.curso = nivelDe(opciones.promover && !d.fechaRetiro ? siguienteCurso(cursoReg) : cursoReg);
+        if (!explicitoNivel) d.curso = opciones.promover && !d.fechaRetiro ? cursoDestino(cursoReg) : cursoReg;
       }
       var kr = rutKey(rut);
       if (d.numeroMatricula) {
@@ -1863,6 +1882,32 @@ function createCore_(env) {
     return { url: env.saveFile(a.nombre || 'portada.jpg', a.mime, a.base64) };
   };
 
+  A.reglasPromocion = function (p, ses) { soloGestion(staffDe(ses)); return reglasPromocion(); };
+  // Recalcula el curso de destino de las fichas aún no matriculadas según las reglas (no toca estudiantes nuevos).
+  A.aplicarPromocion = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    var reglas = reglasPromocion(), n = 0;
+    db.all('Fichas').forEach(function (f) {
+      if (!f.rut || !str(f.cursoAnterior).trim() || f.estado === 'matriculada' || f.estado === 'retirado') return;
+      var dest = cursoDestino(f.cursoAnterior, reglas);
+      if (norm(dest) !== norm(f.curso)) { updFicha(f.rut, { curso: dest, ultimaModificacion: env.now(), modificadoPor: u.nombre }); n++; }
+    });
+    log(u.nombre, 'Reglas de promoción aplicadas', n + ' fichas actualizadas');
+    return { actualizadas: n };
+  };
+  // Reagrupar: asigna curso (con letra) o nivel a varios estudiantes de una vez.
+  A.asignarCursos = function (p, ses) {
+    var u = staffDe(ses); soloGestion(u);
+    var n = 0;
+    (p.asignaciones || []).forEach(function (a) {
+      var f = findFicha(a.rut), curso = limpiarCurso(a.curso);
+      if (!f || !curso || norm(curso) === norm(f.curso)) return;
+      updFicha(f.rut, { curso: curso, ultimaModificacion: env.now(), modificadoPor: u.nombre }); n++;
+    });
+    log(u.nombre, 'Asignación de cursos', n + ' estudiantes');
+    return { asignados: n };
+  };
+
   A.guardarConfig = function (p, ses) {
     var yo = staffDe(ses); soloGestion(yo);
     var cfg = p.config || {}, existentes = {};
@@ -2275,7 +2320,7 @@ function createCore_(env) {
   return {
     handle: handle, setup: setup, importarRegistro: importarRegistro, HEADERS: HEADERS, FICHA_META: FICHA_META,
     util: { normTel: normTel, telValido: telValido, cumple: cumple, visible: visible, mapaCampos: mapaCampos, nivelesPais: nivelesPais, NIVELES_CHILE: NIVELES_CHILE,
-      puebloConVitalidad: puebloConVitalidad, etiquetaExport: etiquetaExport, rutFmt: rutFmt, rutValido: rutValido, rutKey: rutKey, nivelDe: nivelDe, cicloDe: cicloDe, norm: norm }
+      puebloConVitalidad: puebloConVitalidad, etiquetaExport: etiquetaExport, siguienteCurso: siguienteCurso, rutFmt: rutFmt, rutValido: rutValido, rutKey: rutKey, nivelDe: nivelDe, cicloDe: cicloDe, norm: norm }
   };
 }
 
@@ -2889,7 +2934,7 @@ var Doc = (function () {
       '<div class="dh-c"><div class="col">' + esc(cfg.nombreColegio) + '</div><div class="sub">' + esc([cfg.direccion, cfg.ciudad, cfg.rbd ? 'RBD ' + cfg.rbd : '', cfg.telefono].filter(Boolean).join(' · ')) + '</div>' +
       '<div class="tit">' + esc(titulo) + '</div></div>' +
       '<div class="dh-r"><div><b>N° matrícula</b><span style="font-size:12px;font-weight:bold;color:#12347a">' + esc(f.numeroMatricula || '______') + '</span></div><div><b>Año escolar</b><span>' + esc(cfg.anio) + '</span></div>' +
-      '<div><b>RUT</b><span>' + esc(f.rut) + '</span></div><div><b>Nivel</b><span>' + esc(f.curso) + '</span></div><div><b>Fecha</b><span>' + esc(UI.fechaLarga((f.fechaMatricula || '').slice(0, 10)) || new Date().toLocaleDateString('es-CL')) + '</span></div></div></div>';
+      '<div><b>RUT</b><span>' + esc(f.rut) + '</span></div><div><b>Curso</b><span>' + esc(f.curso) + '</span></div><div><b>Fecha</b><span>' + esc(UI.fechaLarga((f.fechaMatricula || '').slice(0, 10)) || new Date().toLocaleDateString('es-CL')) + '</span></div></div></div>';
   }
   function valor(c, f) {
     var v = f[c.id];
@@ -2911,7 +2956,7 @@ var Doc = (function () {
     var cfg = S.form.config, acc = f.aceptaciones || {};
     var h = encabezado(f, 'FICHA DE MATRÍCULA ' + cfg.anio);
     h += '<table class="dt"><tr><td class="k">Estudiante</td><td class="v" colspan="3"><b>' + esc([f.est_nombres, f.est_apellido_paterno, f.est_apellido_materno].filter(Boolean).join(' ')) + '</b></td></tr>' +
-      '<tr><td class="k">Nivel ' + esc(cfg.anio) + '</td><td class="v"><b>' + esc(f.curso) + '</b></td><td class="k">Curso de procedencia</td><td class="v">' + esc(f.cursoAnterior || 'Estudiante nuevo/a') + '</td></tr>' +
+      '<tr><td class="k">Curso / nivel ' + esc(cfg.anio) + '</td><td class="v"><b>' + esc(f.curso) + '</b></td><td class="k">Curso de procedencia</td><td class="v">' + esc(f.cursoAnterior || 'Estudiante nuevo/a') + '</td></tr>' +
       '<tr><td class="k">Estado</td><td class="v">' + esc((S.form.estados || {})[f.estado] || f.estado) + '</td><td class="k">Matrícula registrada</td><td class="v">' + esc(f.fechaMatricula || '—') + '</td></tr></table>';
     var mapa = CoreUtil.mapaCampos(S.form.campos);
     UI.secciones(S.form.campos.filter(function (c) { return CoreUtil.visible(c, f, mapa); })).forEach(function (s) {
@@ -3247,6 +3292,14 @@ var Staff = (function () {
     return (vacio !== undefined ? '<option value="">' + esc(vacio) + '</option>' : '') + lista.map(function (c) { return '<option' + (c === actual ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
   }
   function selNivel(id, actual, dis) { return '<select id="' + id + '"' + (dis ? ' disabled' : '') + '>' + opciones(S.form.niveles || [], actual, 'Seleccione el nivel…') + '</select>'; }
+  // Curso del año de matrícula: solo nivel (para reagrupar después) o curso con letra.
+  function selCurso2027(id, actual, dis, soloNivel) {
+    var niv = S.form.niveles || [], cur = soloNivel ? [] : S.form.cursos.filter(function (c) { return niv.indexOf(c) < 0; });
+    var todo = niv.concat(cur), extra = actual && todo.indexOf(actual) < 0 ? '<option selected>' + esc(actual) + '</option>' : '';
+    function ops(l) { return l.map(function (c) { return '<option' + (c === actual ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join(''); }
+    return '<select id="' + id + '"' + (dis ? ' disabled' : '') + '><option value="">Seleccione…</option>' + extra +
+      '<optgroup label="Solo nivel (se asigna la letra después)">' + ops(niv) + '</optgroup>' + (cur.length ? '<optgroup label="Curso con letra">' + ops(cur) + '</optgroup>' : '') + '</select>';
+  }
   function selAnterior(id, actual, dis) { return '<select id="' + id + '"' + (dis ? ' disabled' : '') + '>' + opciones(S.form.cursos, actual, 'Estudiante nuevo (sin curso anterior)') + '</select>'; }
   function puedoEditar(f) { return gestion() || f.estado !== 'matriculada' || f.editFuncionario; }
   function main() { return UI.$('#main'); }
@@ -3348,9 +3401,10 @@ var Staff = (function () {
     UI.$('#lista').innerHTML = grupos.map(function (g) {
       var c = { enviada: 0, matriculada: 0 };
       g.items.forEach(function (f) { c[f.estado] = (c[f.estado] || 0) + 1; });
-      return '<section class="card curso-group"><div class="curso-h"><h3>🎓 ' + (anterior ? '' : 'Nivel ' + esc(S.form.config.anio) + ': ') + esc(g.curso) + '</h3><span class="muted small">' + esc(CoreUtil.cicloDe(g.curso)) + '</span>' +
+      return '<section class="card curso-group"><div class="curso-h"><h3>🎓 ' + (anterior ? '' : (g.curso === CoreUtil.nivelDe(g.curso) ? 'Nivel ' : 'Curso ') + esc(S.form.config.anio) + ': ') + esc(g.curso) + (!anterior && g.curso === CoreUtil.nivelDe(g.curso) && S.form.cursos.some(function (c) { return CoreUtil.nivelDe(c) === g.curso && c !== g.curso; }) ? ' <span class="badge b-gold">sin letra asignada</span>' : '') + '</h3><span class="muted small">' + esc(CoreUtil.cicloDe(g.curso)) + '</span>' +
         '<div class="chip-stats"><span class="badge b-blue">' + g.items.length + ' estudiantes</span><span class="badge b-enviada">' + c.enviada + ' enviadas</span><span class="badge b-matriculada">' + c.matriculada + ' matriculados</span></div>' +
-        '<span class="grow"></span><button class="btn sm ghost" data-a="imprimir-curso" data-curso="' + esc(g.curso) + '">🖨 Imprimir grupo</button></div>' +
+        '<span class="grow"></span>' + (gestion() && !anterior && g.curso === CoreUtil.nivelDe(g.curso) && S.form.cursos.some(function (c) { return CoreUtil.nivelDe(c) === g.curso && c !== g.curso; }) ? '<button class="btn sm gold" data-a="asignar-cursos" data-curso="' + esc(g.curso) + '">🔀 Asignar cursos</button>' : '') +
+        '<button class="btn sm ghost" data-a="imprimir-curso" data-curso="' + esc(g.curso) + '">🖨 Imprimir grupo</button></div>' +
         '<div class="table-wrap"><table class="t"><thead><tr><th>N°</th><th>N° matr.</th><th>Estudiante</th><th>RUT</th><th>' + (anterior ? 'Nivel ' + esc(S.form.config.anio) : 'Curso procedencia') + '</th><th class="hide-sm">Apoderado/a</th><th>Estado</th><th class="hide-sm hide-md">Actualización</th><th></th></tr></thead><tbody>' +
         g.items.map(function (f, i) {
           return '<tr><td class="muted">' + (i + 1) + '</td><td class="num-mat">' + esc(f.numeroMatricula || '—') + '</td><td><a href="#" class="name" data-a="editar" data-rut="' + esc(f.rut) + '">' + esc(UI.nombreEst(f)) + '</a></td><td class="nowrap">' + esc(f.rut) + '</td>' +
@@ -3380,6 +3434,7 @@ var Staff = (function () {
     else if (a === 'descargar') descargarBase();
     else if (a === 'habilitar') modalHabilitar(null);
     else if (a === 'borrar-todo') borrarTodo();
+    else if (a === 'asignar-cursos') asignarCursos(b.dataset.curso);
   }
 
   function nuevaFicha() {
@@ -3657,7 +3712,7 @@ var Staff = (function () {
       '<div><label for="m-num">N° de matrícula</label>' + (gestion() && mat ? '<input id="m-num" value="' + esc(f.numeroMatricula || '') + '">' : '<div class="meta-v num-mat" style="font-size:20px">' + esc(f.numeroMatricula || '— (se asigna al matricular)') + '</div>') + '</div>' +
       '<div><label>RUT estudiante</label><div class="meta-v">' + esc(f.rut) + '</div></div>' +
       '<div><label for="m-ant">Curso de procedencia</label>' + selAnterior('m-ant', f.cursoAnterior || '', !puede) + '</div>' +
-      '<div><label for="m-curso">Nivel al que se matricula (' + esc(anio) + ')</label>' + selNivel('m-curso', f.curso, !puede) + '</div>' +
+      '<div><label for="m-curso">Curso o nivel ' + esc(anio) + '</label>' + selCurso2027('m-curso', f.curso, !puede, !f.cursoAnterior && !gestion()) + (!f.cursoAnterior ? '<small class="help">Estudiante nuevo: se indica el nivel; la letra la asigna el Equipo de Gestión.</small>' : '') + '</div>' +
       '<div><label for="m-estado">Estado</label><select id="m-estado"' + (puede && (!mat || gestion()) ? '' : ' disabled') + '>' + estados.map(function (k) { return '<option value="' + k + '"' + (k === f.estado ? ' selected' : '') + '>' + esc(S.form.estados[k]) + '</option>'; }).join('') + '</select></div>' +
       '<div><label>Clave de la familia</label><div class="meta-v">' + (f.claveCambiada ? 'Personalizada' : 'Inicial (fecha de nacimiento)') + (UI.si(f.debeCambiarClave) ? ' · <span class="badge b-gold">cambio solicitado</span>' : '') + '</div></div>' +
       '<div><label>Enviada por la familia</label><div class="meta-v">' + esc(f.fechaEnvio || '—') + (f.fechaActualizacion ? '<div class="small muted">Actualizada: ' + esc(f.fechaActualizacion) + '</div>' : '') + '</div></div>' +
@@ -3966,6 +4021,44 @@ var Staff = (function () {
       contarSolicitudes(); vSolicitudes();
     };
   }
+  /* Reagrupar: los estudiantes que quedaron solo con nivel (ej.: «1° Básico») se reparten en los cursos con letra. */
+  function asignarCursos(nivel) {
+    var lista = fichas.filter(function (f) { return f.curso === nivel; }), anio = S.form.config.anio;
+    var cursos = S.form.cursos.filter(function (c) { return CoreUtil.nivelDe(c) === nivel && c !== nivel; });
+    function ops(sel) { return '<option value="">— Sin asignar (' + esc(nivel) + ')</option>' + cursos.map(function (c) { return '<option' + (c === sel ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join(''); }
+    UI.modal({
+      title: '🔀 Asignar cursos · ' + esc(nivel) + ' ' + esc(anio), size: 'wide',
+      html: '<p class="muted" style="margin-top:0">' + lista.length + ' estudiantes están solo en el nivel <b>' + esc(nivel) + '</b>. Elija el curso de cada uno o use las herramientas rápidas. Los que queden «sin asignar» siguen en el nivel.</p>' +
+        '<div class="row" style="margin-bottom:12px"><select id="ac-todos" style="width:auto">' + ops('') + '</select><button class="btn sm ghost" id="ac-aplicar">Asignar a todos</button>' +
+        '<button class="btn sm ghost" id="ac-repartir">⚖️ Repartir en partes iguales (' + cursos.map(function (c) { return c.slice(-1); }).join(', ') + ')</button></div>' +
+        '<div class="table-wrap" style="max-height:50vh;overflow:auto"><table class="t"><thead><tr><th>N°</th><th>Estudiante</th><th>Curso de procedencia</th><th>Sexo</th><th>Asignar a</th></tr></thead><tbody>' +
+        lista.map(function (f, i) {
+          return '<tr><td class="muted">' + (i + 1) + '</td><td class="name">' + esc(UI.nombreEst(f)) + '</td><td class="small">' + esc(f.cursoAnterior || 'Nuevo/a') + '</td><td class="small">' + esc((f.est_sexo || '').charAt(0)) + '</td>' +
+            '<td><select data-ac="' + esc(f.rut) + '">' + ops('') + '</select></td></tr>';
+        }).join('') + '</tbody></table></div>',
+      buttons: [{ text: 'Cancelar', cls: 'ghost', value: null }, {
+        text: '💾 Guardar asignación', cls: 'ok', onClick: async function (el) {
+          var asig = UI.$$('[data-ac]', el).filter(function (s) { return s.value; }).map(function (s) { return { rut: s.dataset.ac, curso: s.value }; });
+          if (!asig.length) { UI.toast('No asignó ningún curso', 'bad'); return false; }
+          try { return await UI.api('asignarCursos', { asignaciones: asig }); } catch (e) { UI.toast(e.userMsg || e.message, 'bad'); return false; }
+        }
+      }],
+      onOpen: function (el) {
+        el.querySelector('#ac-aplicar').onclick = function () { var v = el.querySelector('#ac-todos').value; UI.$$('[data-ac]', el).forEach(function (s) { s.value = v; }); };
+        el.querySelector('#ac-repartir').onclick = function () {
+          // alterna por sexo para que los cursos queden equilibrados (mujeres y hombres repartidos por igual)
+          var sels = UI.$$('[data-ac]', el), k = 0;
+          var orden = sels.map(function (s, i) { return { s: s, sx: (lista[i].est_sexo || 'x').charAt(0) }; }).sort(function (a, b) { return a.sx < b.sx ? -1 : a.sx > b.sx ? 1 : 0; });
+          orden.forEach(function (o) { o.s.value = cursos[k++ % cursos.length]; });
+        };
+      }
+    }).then(async function (r) {
+      if (!r) return;
+      await UI.success('Cursos asignados', '<b>' + r.asignados + '</b> estudiantes quedaron con su curso asignado.');
+      ir('fichas');
+    });
+  }
+
   async function borrarTodo() {
     var esSuper = !!P.superadmin, total = fichas.length;
     if (!esSuper) {
@@ -4321,7 +4414,8 @@ var Staff = (function () {
   /* ============================== CONFIGURACIÓN ============================== */
   async function vConfig() {
     admin = await UI.api('datosAdmin');
-    var c = admin.config;
+    var c = admin.config, reglas = await UI.api('reglasPromocion'), anioC = c.anio;
+    var origenes = (S.form.niveles || []).filter(function (n) { return !/egresad/i.test(CoreUtil.siguienteCurso(n)); });
     function inp(k, label, ph, help) { return '<div class="field"><label for="cf-' + k + '">' + label + '</label><input id="cf-' + k + '" data-cf="' + k + '" value="' + esc(c[k]) + '" placeholder="' + esc(ph || '') + '">' + (help ? '<small class="help">' + help + '</small>' : '') + '</div>'; }
     main().innerHTML = '<div class="page-h"><h2>Configuración</h2><span class="grow"></span><button class="btn ghost" data-ir-portada>🖼 Textos, fotos y fechas de la portada →</button></div>' +
       '<section class="card"><div class="card-h"><div class="sec-num">🏫</div><h3>Datos del establecimiento</h3></div><div class="grid">' +
@@ -4330,6 +4424,15 @@ var Staff = (function () {
       inp('urlPlataforma', 'Dirección (URL) de esta plataforma', 'https://usuario.github.io/fichas-matricula/', 'Se incluye en los correos y permite mostrar la insignia en ellos.') + '</div></section>' +
       '<section class="card"><div class="card-h"><div class="sec-num">📧</div><h3>Envío de correos</h3><span class="grow"></span><button class="btn gold" id="cf-mail">📧 Enviar correo de prueba</button></div>' +
       '<p class="muted small" style="margin:-6px 0 0">Si las familias o funcionarios no reciben las claves o copias de fichas, use esta prueba: muestra la cuenta que envía, la cantidad de correos disponibles hoy y el motivo exacto si hay un error. Cada envío también queda en la <b>Bitácora</b>.</p></section>' +
+      '<section class="card"><div class="card-h"><div class="sec-num">🎓</div><h3>Paso de curso al año ' + esc(anioC) + '</h3><span class="grow"></span><button class="btn sm ghost" id="cf-aplicar-prom">↻ Aplicar a fichas sin matricular</button></div>' +
+      '<p class="muted small" style="margin-top:-6px">Defina en cada paso si el estudiante <b>mantiene su letra</b> (ej.: 1° Básico A → 2° Básico A) o pasa <b>solo al nivel</b> para que luego el Equipo de Gestión lo asigne con «🔀 Asignar cursos» (ej.: cuando se reagrupan los cursos). Los estudiantes nuevos siempre se registran solo por nivel.</p>' +
+      '<div class="table-wrap"><table class="t"><thead><tr><th>Curso de procedencia</th><th>Pasa a</th><th>¿Cómo?</th></tr></thead><tbody>' +
+      origenes.map(function (n) {
+        var r = reglas[n] || 'letra', dest = CoreUtil.nivelDe(CoreUtil.siguienteCurso(n));
+        return '<tr><td><b>' + esc(n) + '</b></td><td>' + esc(dest) + '</td><td><div class="seg" data-regla="' + esc(n) + '">' +
+          '<button type="button" data-v="letra" title="Ej.: ' + esc(n) + ' A → ' + esc(dest) + ' A" class="' + (r === 'letra' ? 'active' : '') + '">🔤 Mantiene la letra</button>' +
+          '<button type="button" data-v="nivel" title="Quedan en ' + esc(dest) + ' sin letra; luego use «Asignar cursos»" class="' + (r === 'nivel' ? 'active' : '') + '">🔀 Solo nivel (se reagrupan)</button></div></td></tr>';
+      }).join('') + '</tbody></table></div></section>' +
       '<section class="card"><div class="card-h"><div class="sec-num">#</div><h3>Numeración de matrícula por ciclo</h3></div>' +
       '<p class="muted small" style="margin-top:-6px">Cada ciclo usa su propio tramo de números y nunca se repiten. Ej.: Preescolar desde 1, Primer Ciclo desde 101, Segundo Ciclo desde 401, Media desde 701.</p><div class="grid">' +
       inp('numInicioPreescolar', 'Preescolar comienza en', '1') + inp('numInicioPrimerCiclo', 'Primer Ciclo comienza en', '101') + inp('numInicioSegundoCiclo', 'Segundo Ciclo comienza en', '401') + inp('numInicioMedia', 'Enseñanza Media comienza en', '701') + '</div></section>' +
@@ -4342,11 +4445,21 @@ var Staff = (function () {
       '<small class="help">El ciclo se calcula automáticamente: Prekínder/Kínder → Preescolar · 1° a 4° Básico → Primer Ciclo · 5° a 8° Básico → Segundo Ciclo · 1° a 4° Medio → Enseñanza Media.</small></section>' +
       '<div class="actionbar"><span class="grow"></span><button class="btn ok lg" id="cf-save">💾 Guardar configuración</button></div>';
     UI.$('[data-ir-portada]').onclick = function () { ir('portada'); };
+    function leerReglas() { var o = {}; UI.$$('[data-regla]').forEach(function (s) { var b = s.querySelector('.active'); o[s.dataset.regla] = b ? b.dataset.v : 'letra'; }); return o; }
+    UI.$$('[data-regla]').forEach(function (s) { s.onclick = function (e) { var b = e.target.closest('[data-v]'); if (!b) return; UI.$$('button', s).forEach(function (x) { x.classList.toggle('active', x === b); }); }; });
+    UI.$('#cf-aplicar-prom').onclick = async function () {
+      if (!await UI.confirm('¿Aplicar las reglas?', 'Se guardarán las reglas y se recalculará el curso ' + esc(anioC) + ' de las fichas <b>aún no matriculadas</b> según su curso de procedencia. Las asignaciones hechas a mano en esas fichas se reemplazarán.', 'Aplicar')) return;
+      var ok = await UI.intentar(function () { return UI.api('guardarConfig', { config: { promocionReglas: JSON.stringify(leerReglas()) } }); }, 'Guardando reglas…');
+      if (!ok) return;
+      var r = await UI.intentar(function () { return UI.api('aplicarPromocion'); }, 'Aplicando…');
+      if (r) UI.success('Reglas aplicadas', '<b>' + r.actualizadas + '</b> fichas actualizaron su curso ' + esc(anioC) + '. Los grupos que quedaron solo por nivel se reparten con «🔀 Asignar cursos» en Fichas de matrícula.');
+    };
     UI.$('#cf-mail').onclick = probarCorreo;
     UI.$('#cf-ver').onclick = function () { S.form.config.videoUrl = UI.$('#cf-videoUrl').value; App.tutorial(); };
     UI.$('#cf-save').onclick = async function () {
       var cfg = {};
       UI.$$('[data-cf]').forEach(function (el) { cfg[el.dataset.cf] = el.value; });
+      cfg.promocionReglas = JSON.stringify(leerReglas());
       var r = await UI.intentar(function () { return UI.api('guardarConfig', { config: cfg, cursos: UI.$('#cf-cursos').value }); }, 'Guardando…');
       if (!r) return;
       await refrescarForm();
