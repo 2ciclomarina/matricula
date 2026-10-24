@@ -602,6 +602,37 @@ tr.total td { background: var(--navy); color: #fff; font-weight: 800; }
 .desp[open] .desp-chev { transform: rotate(180deg); }
 .desp[open] summary { background: color-mix(in srgb, var(--cc) 8%, #fff); border-bottom: 1px solid color-mix(in srgb, var(--cc) 18%, #fff); }
 .desp-b { padding: 6px; }
+/* pueblos originarios: ícono propio de cada pueblo */
+.pueblo-nom { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pueblo-nom > span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.pueblo-ico { flex: none; width: 34px; height: 34px; display: inline-grid; place-items: center; background: #fff; border: 1px solid #e6edf8; border-radius: 10px; box-shadow: 0 2px 6px rgba(10, 31, 77, .06); }
+.pueblo-ico svg { width: 26px; height: 26px; display: block; }
+.pueblo-nom .vital { font-size: 10.5px; font-weight: 800; color: #8a6a1f; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+.pueblo-row { grid-template-columns: 230px minmax(0, 1fr) 92px; }
+@media (max-width: 640px) { .pueblo-row { grid-template-columns: 150px minmax(0, 1fr) 70px; } }
+/* insignia más visible en la portada y en la barra superior */
+.brand img { width: 76px; height: 86px; filter: drop-shadow(0 4px 10px rgba(10, 31, 77, .12)); }
+.brand b { font-size: 22px; }
+.brand span { font-size: 12.5px; }
+.topbar img { width: 54px; height: 54px; }
+@media (max-width: 640px) { .brand img { width: 58px; height: 66px; } .brand b { font-size: 18px; } .topbar img { width: 42px; height: 42px; } }
+/* bitácora: filtros por acción y columnas ordenables */
+.chips-filtro { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.chip-f { border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 6px 12px; font-size: 13px; font-weight: 700; color: var(--ink); cursor: pointer; font-family: inherit; }
+.chip-f b { margin-left: 4px; background: #edf2fb; color: var(--blue); border-radius: 99px; padding: 1px 7px; font-size: 11.5px; }
+.chip-f:hover { border-color: var(--blue-2); }
+.chip-f.activo { background: var(--blue); border-color: var(--blue); color: #fff; }
+.chip-f.activo b { background: rgba(255, 255, 255, .2); color: #fff; }
+th.ord { cursor: pointer; user-select: none; white-space: nowrap; }
+th.ord span { opacity: .45; font-size: 11px; }
+th.ord.activo span { opacity: 1; }
+/* autorizaciones impresas en hoja aparte */
+.doc .aut-ops { margin-top: 16px; border: 1.5px solid #12347a; border-radius: 8px; padding: 10px 14px; page-break-inside: avoid; }
+.doc .aut-t { font-size: 10.5px; font-weight: bold; color: #12347a; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.doc .aut-op { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; line-height: 1.5; margin: 6px 0; }
+.doc .aut-op .caja { flex: none; width: 15px; height: 15px; border: 1.5px solid #222; border-radius: 2px; display: inline-grid; place-items: center; font-size: 12px; font-weight: bold; line-height: 1; margin-top: 2px; }
+.doc .aut-op.marcada span:last-child { font-weight: bold; }
+.doc .aut-nota { font-size: 9.5px; color: #12347a; margin-top: 6px; }
 
 </style>
 </head>
@@ -675,7 +706,7 @@ function createCore_(env) {
     Bitacora: ['fecha', 'usuario', 'accion', 'detalle']
   };
   var TIPOS_CAMPO = ['texto', 'parrafo', 'numero', 'fecha', 'email', 'telefono', 'rut', 'lista', 'si_no', 'nivel_pais', 'multiple'];
-  var VERSION_CAMPOS = 4; // sube cuando cambian los datos predeterminados de la ficha (ver migrarCampos)
+  var VERSION_CAMPOS = 5; // sube cuando cambian los datos predeterminados de la ficha (ver migrarCampos)
 
   /* Tabla de equivalencia educacional – Boletín Censal N°15 (INE, Censo 2024).
      Cada país tiene 12 posiciones: 1° Básico … 8° Básico, 1° Medio … 4° Medio en Chile ('' = sin equivalencia). */
@@ -1179,10 +1210,12 @@ function createCore_(env) {
     });
     L = L.concat([
       [S7, 'otr_sep', 'Condición SEP del estudiante (Ley de Subvención Escolar Preferencial)', 'lista', 'Prioritario,Preferente,No corresponde,No sabe / en verificación', true, true],
-      [S7, 'otr_religion', 'Clase de religión (Decreto 924)', 'lista', 'Católica,Evangélica,No desea clases de religión,Otra', true, true],
+      [S7, 'otr_religion_desea', '¿Desea que el estudiante asista a clases de religión?', 'si_no', '', true, true, 'Según el Decreto 924, la clase de religión es optativa para la familia. Si responde «No», el estudiante realizará la actividad alternativa que disponga el establecimiento. Esta decisión se firma en una autorización aparte.'],
+      [S7, 'otr_religion', '¿De qué credo desea las clases de religión?', 'lista', 'Católica,Evangélica,Otra', true, true, '', false, 'otr_religion_desea=Sí'],
+      [S7, 'otr_religion_otra', 'Indique el credo', 'texto', '', true, true, '', false, 'otr_religion=Otra'],
       [S7, 'otr_computador', '¿El estudiante tiene acceso a un computador en el hogar?', 'si_no', '', true, true],
       [S7, 'otr_internet', '¿El estudiante tiene acceso a internet en el hogar?', 'si_no', '', true, true],
-      [S7, 'otr_autoriza_imagen', 'Autorizo el uso de la imagen del estudiante en actividades y medios institucionales', 'si_no', '', true, true],
+      [S7, 'otr_autoriza_imagen', 'Autorizo el uso de la imagen del estudiante en actividades y medios institucionales', 'si_no', '', true, true, 'Esta autorización se firma en una hoja aparte al formalizar la matrícula.'],
       [S7, 'otr_autoriza_info', 'Autorizo al establecimiento a enviarme información y comunicaciones (correo electrónico, WhatsApp u otros medios)', 'si_no', '', true, true],
       [S7, 'otr_transporte', 'Medio de transporte al colegio', 'lista', 'Caminando,Transporte escolar,Locomoción colectiva,Vehículo particular,Otro', false, true],
       [S7, 'otr_beneficios', 'Otros beneficios (JUNAEB, Chile Solidario, etc.)', 'texto', '', false, true],
@@ -1202,7 +1235,8 @@ function createCore_(env) {
       var CAMBIOS = {
         2: ['est_nacionalidad', 'sup_rut', 'sup_parentesco', 'sup_celular', 'mad_nombre', 'mad_celular', 'pad_nombre', 'pad_celular', 'otr_beneficios', 'sup_nombre'],
         3: ['est_colegio_procedencia', 'sal_medicamentos', 'sal_diagnostico'],
-        4: ['apo_direccion', 'apo_comuna']
+        4: ['apo_direccion', 'apo_comuna'],
+        5: ['otr_religion', 'otr_autoriza_imagen']
       }, CAMBIAN = [];
       for (var v = desde + 1; v <= VERSION_CAMPOS; v++) CAMBIAN = CAMBIAN.concat(CAMBIOS[v] || []);
       camposIniciales().forEach(function (c) {
@@ -1220,6 +1254,12 @@ function createCore_(env) {
       }
       if (desde < 4) { // quien ya registró una dirección distinta del apoderado queda con «No» (vive en otra dirección)
         db.update('Fichas', function (f) { return str(f.apo_direccion).trim() && !str(f.apo_misma_direccion).trim() && norm(f.apo_direccion) !== norm(f.est_direccion); }, { apo_misma_direccion: 'No' });
+      }
+      if (desde < 5) { // religión: primero «¿desea clases?» y luego el credo
+        db.update('Fichas', function (f) { return /no desea/i.test(str(f.otr_religion)); }, { otr_religion_desea: 'No', otr_religion: '' });
+        db.update('Fichas', function (f) { return str(f.otr_religion).trim() && !/no desea/i.test(str(f.otr_religion)) && !str(f.otr_religion_desea).trim(); }, { otr_religion_desea: 'Sí' });
+        var docsIds = {}; db.all('Documentos').forEach(function (d) { docsIds[d.id] = 1; });
+        documentosIniciales().forEach(function (d) { if (d.tipo === 'autorizacion' && !docsIds[d.id]) db.insert('Documentos', d); });
       }
       if (desde < 3) { // quien ya escribió medicamentos queda con «Sí» en la nueva pregunta
         db.update('Fichas', function (f) { return str(f.sal_medicamentos).trim() && !/^no\b/i.test(str(f.sal_medicamentos).trim()) && !str(f.sal_toma_medicamentos).trim(); }, { sal_toma_medicamentos: 'Sí' });
@@ -1246,7 +1286,15 @@ function createCore_(env) {
         resumen: 'Establece cómo se evalúa y califica a los estudiantes, la cantidad de evaluaciones, la eximición, la situación de ausencias y los requisitos de promoción según el Decreto 67/2018.' },
       { id: 'compromiso', tipo: 'carta', titulo: 'Carta de compromiso del apoderado/a', orden: '40', requiereAceptacion: 'SI', imprimir: 'SI', activo: 'SI', url: '',
         resumen: 'Compromiso de la familia con el proceso formativo del estudiante y con las normas del establecimiento.',
-        contenido: 'Yo, {{apoderado}}, RUT {{rut_apoderado}}, apoderado/a de {{estudiante}}, RUT {{rut_estudiante}}, matriculado/a en {{curso}} para el año escolar {{anio}} en el {{colegio}}, me comprometo a:\n\n1. Conocer, respetar y cumplir el Proyecto Educativo Institucional, el Reglamento Interno Escolar y el Reglamento de Evaluación, Calificación y Promoción.\n2. Velar por la asistencia y puntualidad diaria de mi pupilo/a, justificando oportunamente sus inasistencias.\n3. Asistir a reuniones de apoderados, entrevistas y citaciones del establecimiento.\n4. Apoyar el proceso de aprendizaje y formación valórica de mi pupilo/a, supervisando sus deberes escolares.\n5. Mantener un trato respetuoso con todos los integrantes de la comunidad educativa.\n6. Mantener actualizados mis datos de contacto e informar cualquier cambio relevante en la salud o situación familiar del estudiante.\n\n{{ciudad}}, {{fecha}}.' }
+        contenido: 'Yo, {{apoderado}}, RUT {{rut_apoderado}}, apoderado/a de {{estudiante}}, RUT {{rut_estudiante}}, matriculado/a en {{curso}} para el año escolar {{anio}} en el {{colegio}}, me comprometo a:\n\n1. Conocer, respetar y cumplir el Proyecto Educativo Institucional, el Reglamento Interno Escolar y el Reglamento de Evaluación, Calificación y Promoción.\n2. Velar por la asistencia y puntualidad diaria de mi pupilo/a, justificando oportunamente sus inasistencias.\n3. Asistir a reuniones de apoderados, entrevistas y citaciones del establecimiento.\n4. Apoyar el proceso de aprendizaje y formación valórica de mi pupilo/a, supervisando sus deberes escolares.\n5. Mantener un trato respetuoso con todos los integrantes de la comunidad educativa.\n6. Mantener actualizados mis datos de contacto e informar cualquier cambio relevante en la salud o situación familiar del estudiante.\n\n{{ciudad}}, {{fecha}}.' },
+      { id: 'aut_religion', tipo: 'autorizacion', campo: 'otr_religion_desea', titulo: 'Autorización de clases de religión (Decreto 924)', orden: '50', requiereAceptacion: 'NO', imprimir: 'SI', activo: 'SI', url: '',
+        opcionSi: 'SÍ deseo que mi pupilo/a asista a las clases de religión. Credo: {{credo}}', opcionNo: 'NO deseo que mi pupilo/a asista a las clases de religión (realizará la actividad alternativa que disponga el establecimiento).',
+        resumen: 'La clase de religión es optativa para la familia (Decreto Supremo N° 924 de 1983). Su opción se registra en la ficha y se firma en esta autorización.',
+        contenido: 'Yo, {{apoderado}}, RUT {{rut_apoderado}}, apoderado/a de {{estudiante}}, RUT {{rut_estudiante}}, matriculado/a en {{curso}} para el año escolar {{anio}} en el {{colegio}}, declaro estar informado/a de que, conforme al Decreto Supremo N° 924 de 1983 del Ministerio de Educación, las clases de religión son de carácter optativo para la familia, y que esta opción se manifiesta por escrito al momento de la matrícula.\n\nPor lo anterior, manifiesto mi decisión respecto de la asistencia de mi pupilo/a a las clases de religión durante el año escolar {{anio}}, la que podré modificar por escrito ante el establecimiento.' },
+      { id: 'aut_imagen', tipo: 'autorizacion', campo: 'otr_autoriza_imagen', titulo: 'Autorización de uso de imagen del estudiante', orden: '60', requiereAceptacion: 'NO', imprimir: 'SI', activo: 'SI', url: '',
+        opcionSi: 'SÍ AUTORIZO el uso de la imagen de mi pupilo/a en los términos señalados.', opcionNo: 'NO AUTORIZO el uso de la imagen de mi pupilo/a.',
+        resumen: 'Permiso para publicar fotografías y videos del estudiante en actividades y medios institucionales. Su respuesta se registra en la ficha y se firma en esta autorización.',
+        contenido: 'Yo, {{apoderado}}, RUT {{rut_apoderado}}, apoderado/a de {{estudiante}}, RUT {{rut_estudiante}}, matriculado/a en {{curso}} para el año escolar {{anio}} en el {{colegio}}, en conformidad con la Ley N° 19.628 sobre protección de la vida privada y la Ley N° 21.430 sobre garantías y protección integral de los derechos de la niñez y adolescencia, me pronuncio sobre el uso de fotografías, videos y grabaciones en que aparezca mi pupilo/a, captados en clases, actos, salidas pedagógicas y otras actividades del establecimiento.\n\nEl material podrá ser utilizado únicamente con fines educativos, informativos e institucionales (diario mural, página web, redes sociales oficiales, publicaciones y presentaciones del establecimiento), sin fines comerciales y resguardando siempre la dignidad e integridad del estudiante. Esta autorización rige para el año escolar {{anio}} y puede ser revocada en cualquier momento mediante comunicación escrita al establecimiento.' }
     ];
   }
 
@@ -1806,7 +1854,7 @@ function createCore_(env) {
       var sx = norm(f.est_sexo);
       if (sx.charAt(0) === 'f') o.mujeres++; else if (sx.charAt(0) === 'm') o.hombres++;
       if (e === 'retirado') return;
-      var ci = cicloDe(f.curso), C = ciclos[ci] || (ciclos[ci] = { ciclo: ci, vigentes: 0, nuevos: 0, repitentes: 0, pie: 0, pieEval: 0, nee: 0, pueblos: 0, extranjeros: 0, diagnosticos: {}, pueblosDet: {} });
+      var ci = cicloDe(f.curso), C = ciclos[ci] || (ciclos[ci] = { ciclo: ci, vigentes: 0, nuevos: 0, repitentes: 0, pie: 0, pieEval: 0, nee: 0, prioritarios: 0, preferentes: 0, pueblos: 0, extranjeros: 0, diagnosticos: {}, pueblosDet: {} });
       C.vigentes++;
       var pueblo = puebloConVitalidad(f.est_pueblo_originario);
       if (pueblo) { o.pueblos++; C.pueblos++; pueblos[pueblo] = (pueblos[pueblo] || 0) + 1; C.pueblosDet[pueblo] = (C.pueblosDet[pueblo] || 0) + 1; }
@@ -1817,10 +1865,12 @@ function createCore_(env) {
       var pie = norm(f.sal_pie);
       if (pie === 'si') { o.pie++; C.pie++; } else if (pie.indexOf('evaluacion') >= 0) C.pieEval++;
       if (norm(f.sal_nee).indexOf('si') === 0 || norm(f.sal_nee).indexOf('evaluacion') >= 0) {
-        C.nee++;
+        C.nee++; o.nee++;
         var d = str(f.sal_diagnostico_tipo).trim() || 'Sin diagnóstico informado';
         C.diagnosticos[d] = (C.diagnosticos[d] || 0) + 1;
       }
+      var sep = norm(f.otr_sep); // condición SEP: prioritario / preferente
+      if (sep.indexOf('prioritari') === 0) { o.prioritarios++; C.prioritarios++; } else if (sep.indexOf('preferente') === 0) { o.preferentes++; C.preferentes++; }
       if (norm(f.est_nacionalidad) && norm(f.est_nacionalidad) !== 'chilena') C.extranjeros++;
       cont(comunas, f.est_comuna);
       cont(procedencias, f.est_colegio_procedencia);
@@ -1835,7 +1885,7 @@ function createCore_(env) {
       porCiclo: CICLOS.filter(function (c) { return ciclos[c]; }).map(function (c) { return ciclos[c]; }), comunas: lista2(comunas), procedencias: lista2(procedencias) };
   };
   function nuevoContador(c) {
-    return { curso: c, nivel: nivelDe(c), ciclo: cicloDe(c), total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0, pueblos: 0, nuevos: 0, repitentes: 0, pie: 0 };
+    return { curso: c, nivel: nivelDe(c), ciclo: cicloDe(c), total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0, pueblos: 0, nuevos: 0, repitentes: 0, pie: 0, nee: 0, prioritarios: 0, preferentes: 0 };
   }
 
   /* ---------- funcionarios: usuarios (Equipo de Gestión) ---------- */
@@ -1984,13 +2034,40 @@ function createCore_(env) {
     return getCampos(true);
   };
 
+  /* Cada autorización se responde en la ficha (Sí / No) y se firma en una hoja aparte.
+     Si no se vincula a una pregunta existente, se crea una en «Otros antecedentes». */
+  function vincularPreguntaAutorizacion(d, limpio, yo) {
+    var campos = db.all('Campos'), pregunta = str(d.pregunta).trim();
+    var actual = str(d.campo).trim();
+    if (actual && actual !== '_nueva') {
+      if (!campos.some(function (x) { return x.id === actual; })) fail('La pregunta vinculada no existe.');
+      if (pregunta && /^aut_/.test(actual)) db.update('Campos', function (x) { return x.id === actual; }, { etiqueta: pregunta, activo: 'SI' });
+      return actual;
+    }
+    if (!pregunta) pregunta = '¿Autoriza: ' + limpio.titulo.replace(/^autorizaci[oó]n( de| para)?\s*/i, '') + '?';
+    var base = 'aut_' + slug(limpio.titulo).slice(0, 30), id = base, n = 2, ids = {};
+    campos.forEach(function (x) { ids[x.id] = 1; });
+    while (ids[id]) id = base + '_' + (n++);
+    var ref = campos.filter(function (x) { return x.id === 'otr_autoriza_info'; })[0] || {};
+    var orden = (parseFloat(ref.orden) || 900) + 0.01 * (campos.filter(function (x) { return /^aut_/.test(x.id); }).length + 1);
+    db.insert('Campos', { id: id, seccion: ref.seccion || '7. Otros antecedentes', etiqueta: pregunta, tipo: 'si_no', opciones: '', obligatorio: 'SI', editableFamilia: 'SI',
+      ayuda: 'Esta autorización se firma en una hoja aparte al formalizar la matrícula.', orden: String(orden), activo: 'SI', condicion: '', sistema: 'NO' });
+    log(yo.nombre, 'Pregunta de autorización creada', pregunta);
+    return id;
+  }
   A.guardarDocumento = function (p, ses) {
     var yo = staffDe(ses); soloGestion(yo);
     var d = p.documento || {};
     if (!str(d.titulo).trim()) fail('Ingrese el título del documento.');
-    var limpio = { tipo: d.tipo === 'carta' ? 'carta' : 'reglamento', titulo: str(d.titulo).trim(), resumen: str(d.resumen),
-      contenido: str(d.contenido), url: str(d.url).trim(), requiereAceptacion: siNo(!!d.requiereAceptacion),
+    var tipo = ['carta', 'autorizacion'].indexOf(d.tipo) >= 0 ? d.tipo : 'reglamento';
+    var limpio = { tipo: tipo, titulo: str(d.titulo).trim(), resumen: str(d.resumen),
+      contenido: str(d.contenido), url: str(d.url).trim(), requiereAceptacion: siNo(!!d.requiereAceptacion && tipo !== 'autorizacion'),
       imprimir: siNo(!!d.imprimir), activo: siNo(d.activo !== false), orden: str(d.orden || '999') };
+    if (tipo === 'autorizacion') {
+      if (!limpio.contenido.trim()) fail('Escriba el texto de la autorización.');
+      limpio.opcionSi = str(d.opcionSi).trim() || 'SÍ AUTORIZO.'; limpio.opcionNo = str(d.opcionNo).trim() || 'NO AUTORIZO.';
+      limpio.campo = vincularPreguntaAutorizacion(d, limpio, yo);
+    }
     if (p.archivo && p.archivo.base64) {
       limpio.url = env.saveFile(p.archivo.nombre || (limpio.titulo + '.pdf'), p.archivo.mime || 'application/pdf', p.archivo.base64);
     }
@@ -2006,6 +2083,8 @@ function createCore_(env) {
 
   A.eliminarDocumento = function (p, ses) {
     var yo = staffDe(ses); soloGestion(yo);
+    var doc = db.all('Documentos').filter(function (x) { return x.id === p.id; })[0];
+    if (doc && doc.tipo === 'autorizacion' && /^aut_/.test(str(doc.campo))) db.update('Campos', function (x) { return x.id === doc.campo; }, { activo: 'NO' }); // la pregunta creada para ella deja de mostrarse
     db.remove('Documentos', function (x) { return x.id === p.id; });
     log(yo.nombre, 'Documento eliminado', p.id);
     return getDocumentos(true);
@@ -2091,7 +2170,8 @@ function createCore_(env) {
 
   A.bitacora = function (p, ses) {
     soloGestion(staffDe(ses));
-    return db.all('Bitacora').slice(-300).reverse().map(limpiarFila);
+    var b = db.all('Bitacora');
+    return (p && p.todos ? b : b.slice(-300)).reverse().map(limpiarFila);
   };
 
   /* ===================== N° de matrícula por ciclo ===================== */
@@ -3179,7 +3259,8 @@ var Doc = (function () {
       apoderado: UI.nombreApo(f) || '______________________________', rut_apoderado: f.apo_rut || '______________',
       estudiante: [f.est_nombres, f.est_apellido_paterno, f.est_apellido_materno].filter(Boolean).join(' '),
       rut_estudiante: f.rut, curso: f.curso, numero_matricula: f.numeroMatricula || '______', curso_anterior: f.cursoAnterior || '', anio: cfg.anio, colegio: cfg.nombreColegio, ciudad: cfg.ciudad || 'Concepción',
-      fecha: hoyLargo(), director: cfg.directorNombre || ''
+      fecha: hoyLargo(), director: cfg.directorNombre || '',
+      credo: f.otr_religion === 'Otra' ? (f.otr_religion_otra || 'Otra') : (f.otr_religion || '____________________')
     };
     return String(txt || '').replace(/\{\{\s*(\w+)\s*\}\}/g, function (m, k) { return k in mapa ? mapa[k] : m; });
   }
@@ -3235,6 +3316,8 @@ var Doc = (function () {
         var a = acc[d.id];
         return '<li><b>' + esc(d.titulo) + ':</b> ' + (a ? '☑ Leído y en conocimiento — ' + esc(a.fecha || a) + (a.por ? ' (' + esc(a.por) + ')' : '') : '☐ Pendiente de confirmación') + '</li>';
       }).join('') + '</ul></div>';
+    var auts = autorizaciones();
+    if (auts.length) h += '<p style="font-size:10px;margin:6px 0 0">📎 Se adjuntan, en hojas aparte, las siguientes autorizaciones para firma: <b>' + auts.map(function (d) { return esc(d.titulo); }).join(' · ') + '</b>.</p>';
     h += firmas(f, true);
     h += '<div class="foot">Documento generado el ' + esc(new Date().toLocaleString('es-CL')) + ' · Plataforma de Fichas de Matrícula · ' + esc(cfg.nombreColegio) + '</div>';
     S.form.documentos.filter(function (d) { return d.tipo === 'carta' && UI.si(d.imprimir); }).forEach(function (d) {
@@ -3242,7 +3325,21 @@ var Doc = (function () {
         '<div class="carta-body">' + esc(reemplazar(d.contenido, f)) + '</div>' +
         (acc[d.id] ? '<p style="font-size:10px;color:#12347a">☑ Leída y aceptada en la plataforma: ' + esc(acc[d.id].fecha || '') + '</p>' : '') + firmas(f, false);
     });
+    auts.forEach(function (d) { h += autorizacionHtml(d, f); });
     return h;
+  }
+  function autorizaciones() { return S.form.documentos.filter(function (d) { return d.tipo === 'autorizacion' && UI.si(d.imprimir) && UI.si(d.activo); }); }
+  /* Autorización en hoja aparte: texto, la opción marcada por la familia en la ficha (o casillas en blanco) y firma. */
+  function autorizacionHtml(d, f) {
+    var v = CoreUtil.norm(f[d.campo]), si = v === 'si', no = v === 'no';
+    function op(marcada, txt) { return '<div class="aut-op' + (marcada ? ' marcada' : '') + '"><span class="caja">' + (marcada ? '✔' : '') + '</span><span>' + esc(reemplazar(txt, f)) + '</span></div>'; }
+    return '<div class="page-break"></div>' + encabezado(f, d.titulo.toUpperCase()) +
+      '<div class="carta-body">' + esc(reemplazar(d.contenido, f)) + '</div>' +
+      '<div class="aut-ops"><div class="aut-t">Marque una opción:</div>' + op(si, d.opcionSi || 'SÍ AUTORIZO.') + op(no, d.opcionNo || 'NO AUTORIZO.') +
+      (si || no ? '<div class="aut-nota">Opción registrada por la familia en la plataforma' + (f.fechaEnvio ? ' (' + esc(f.fechaEnvio) + ')' : '') + '.</div>' : '') + '</div>' +
+      '<p style="font-size:11px;margin-top:14px">' + esc((S.form.config.ciudad || 'Concepción') + ', ' + hoyLargo()) + '.</p>' +
+      '<div class="signs"><div class="sign"><div class="line"></div><b>' + esc(UI.nombreApo(f) || 'Nombre: ______________________') + '</b>RUT: ' + esc(f.apo_rut || '________________') + '<br>Firma Apoderado/a Titular</div>' +
+      '<div class="sign"><div class="line"></div><b>' + esc(f.matriculadoPorNombre || 'Nombre: ______________________') + '</b>Recibido por el establecimiento</div></div>';
   }
   function nombreArchivo(f) {
     return ('Ficha_Matricula_' + f.est_apellido_paterno + '_' + f.est_nombres + '_' + f.curso).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').slice(0, 90) + '.pdf';
@@ -3471,10 +3568,11 @@ var Familia = (function () {
     var h = '<p class="muted" style="margin-top:-4px">Lea cada documento y confirme que está en conocimiento. Su confirmación quedará registrada en el <b>acta de la ficha de matrícula</b>.</p>';
     S.form.documentos.forEach(function (d) {
       var ok = !!acc[d.id];
-      h += '<section class="card doc-card' + (ok ? ' ok' : '') + '" data-wrap="doc:' + esc(d.id) + '"><div class="doc-ico">' + (d.tipo === 'carta' ? '✉️' : '📘') + '</div><div class="grow">' +
+      h += '<section class="card doc-card' + (ok ? ' ok' : '') + '" data-wrap="doc:' + esc(d.id) + '"><div class="doc-ico">' + (d.tipo === 'carta' ? '✉️' : d.tipo === 'autorizacion' ? '✍️' : '📘') + '</div><div class="grow">' +
         '<h3 style="font-size:17px">' + esc(d.titulo) + '</h3><p class="muted" style="margin:0 0 10px">' + esc(d.resumen) + '</p><div class="row">' +
-        (d.url ? '<a class="btn sm" href="' + esc(d.url) + '" target="_blank" rel="noopener">📄 Abrir documento completo</a>' : (d.tipo !== 'carta' ? '<span class="small muted">El documento completo está disponible en el establecimiento.</span>' : '')) +
-        (d.contenido ? '<button class="btn sm ghost" data-carta="' + esc(d.id) + '">✉️ Leer carta</button>' : '') + '</div>' +
+        (d.url ? '<a class="btn sm" href="' + esc(d.url) + '" target="_blank" rel="noopener">📄 Abrir documento completo</a>' : (d.tipo === 'reglamento' ? '<span class="small muted">El documento completo está disponible en el establecimiento.</span>' : '')) +
+        (d.contenido ? '<button class="btn sm ghost" data-carta="' + esc(d.id) + '">' + (d.tipo === 'autorizacion' ? '✍️ Leer autorización' : '✉️ Leer carta') + '</button>' : '') + '</div>' +
+        (d.tipo === 'autorizacion' ? '<div class="doc-accept small">' + (F[d.campo] ? 'Su respuesta en la ficha: <b>' + esc(F[d.campo]) + '</b>' : '⚠️ Responda esta autorización en la ficha: <b>' + esc(((S.form.campos.filter(function (c) { return c.id === d.campo; })[0]) || {}).etiqueta || '') + '</b>') + '<br><span class="muted">Se imprime en una hoja aparte para firmarla al formalizar la matrícula.</span></div>' : '') +
         (UI.si(d.requiereAceptacion) ? '<div class="doc-accept"><label class="check"><input type="checkbox" data-acepta="' + esc(d.id) + '"' + (ok ? ' checked' : '') + (lock ? ' disabled' : '') + '>' +
           '<span>Declaro que he leído y estoy en conocimiento de este documento, y me comprometo a respetarlo.' + (ok && acc[d.id].fecha && acc[d.id].fecha !== 'recién' ? ' <span class="small muted">(' + esc(acc[d.id].fecha) + ')</span>' : '') + '</span></label></div>' : '') +
         '</div></section>';
@@ -4311,9 +4409,9 @@ var Staff = (function () {
     }
     function fila(c, cls, nombre) {
       return '<tr class="' + (cls || '') + '"><td>' + esc(nombre || c.curso) + '</td><td><b>' + (c.total - c.retirado) + '</b></td><td>' + c.pendiente + '</td><td>' + c.en_proceso + '</td><td>' + (c.enviada + c.desbloqueada) + '</td><td>' + c.matriculada +
-        '</td><td>' + c.retirado + '</td><td class="hide-sm">' + c.mujeres + '</td><td class="hide-sm">' + c.hombres + '</td><td>' + (c.pueblos || 0) + '</td><td><div class="row" style="flex-wrap:nowrap;gap:8px">' + barra(c) + '<span class="small">' + pct(c) + '%</span></div></td></tr>';
+        '</td><td>' + c.retirado + '</td><td class="hide-sm">' + c.mujeres + '</td><td class="hide-sm">' + c.hombres + '</td><td>' + (c.nee || 0) + '</td><td>' + (c.prioritarios || 0) + '</td><td>' + (c.preferentes || 0) + '</td><td>' + (c.pueblos || 0) + '</td><td><div class="row" style="flex-wrap:nowrap;gap:8px">' + barra(c) + '<span class="small">' + pct(c) + '%</span></div></td></tr>';
     }
-    var head = '<thead><tr><th>Curso</th><th>Estudiantes</th><th>Sin iniciar</th><th>En proceso</th><th>Enviadas</th><th>Matriculados</th><th>Retirados</th><th class="hide-sm">Mujeres</th><th class="hide-sm">Hombres</th><th title="Mapuche, Aymara, Quechua y Rapa Nui">Pueblos orig.</th><th>Avance</th></tr></thead>';
+    var head = '<thead><tr><th>Curso</th><th>Estudiantes</th><th>Sin iniciar</th><th>En proceso</th><th>Enviadas</th><th>Matriculados</th><th>Retirados</th><th class="hide-sm">Mujeres</th><th class="hide-sm">Hombres</th><th title="Necesidades educativas especiales (incluye en evaluación)">N.E.E.</th><th title="Estudiantes prioritarios (SEP)">Prioritarios</th><th title="Estudiantes preferentes (SEP)">Preferentes</th><th title="Mapuche, Aymara, Quechua y Rapa Nui">Pueblos orig.</th><th>Avance</th></tr></thead>';
     var resumen = st.ciclos.map(function (ci) { var cs = st.cursos.filter(function (c) { return c.ciclo === ci; }); return cs.length ? fila(sumar(cs), '', ci) : ''; }).join('');
     var h = '<div class="page-h"><h2>Resumen estadístico de matrícula ' + esc(S.form.config.anio) + '</h2><span class="grow"></span><button class="btn ghost" id="st-xls">⬇ Exportar resumen</button></div>' +
       '<div class="kpis"><div class="kpi k1"><span class="i">🎒</span><div class="v">' + (T.total - T.retirado) + '</div><div class="l">Estudiantes vigentes</div></div>' +
@@ -4336,11 +4434,11 @@ var Staff = (function () {
     });
     main().innerHTML = h;
     UI.$('#st-xls').onclick = function () {
-      var rows = [['Ciclo', 'Nivel', 'Curso', 'Estudiantes vigentes', 'Sin iniciar', 'En proceso', 'Enviadas', 'Matriculados', 'Retirados', 'Mujeres', 'Hombres', 'Pueblos originarios (4 con vitalidad lingüística)', '% avance']];
-      st.cursos.forEach(function (c) { rows.push([c.ciclo, c.nivel, c.curso, c.total - c.retirado, c.pendiente, c.en_proceso, c.enviada + c.desbloqueada, c.matriculada, c.retirado, c.mujeres, c.hombres, c.pueblos || 0, pct(c)]); });
-      rows.push(['TOTAL', '', '', T.total - T.retirado, T.pendiente, T.en_proceso, T.enviada + T.desbloqueada, T.matriculada, T.retirado, T.mujeres, T.hombres, T.pueblos || 0, pct(T)]);
+      var rows = [['Ciclo', 'Nivel', 'Curso', 'Estudiantes vigentes', 'Sin iniciar', 'En proceso', 'Enviadas', 'Matriculados', 'Retirados', 'Mujeres', 'Hombres', 'N.E.E.', 'Prioritarios', 'Preferentes', 'Pueblos originarios (4 con vitalidad lingüística)', '% avance']];
+      st.cursos.forEach(function (c) { rows.push([c.ciclo, c.nivel, c.curso, c.total - c.retirado, c.pendiente, c.en_proceso, c.enviada + c.desbloqueada, c.matriculada, c.retirado, c.mujeres, c.hombres, c.nee || 0, c.prioritarios || 0, c.preferentes || 0, c.pueblos || 0, pct(c)]); });
+      rows.push(['TOTAL', '', '', T.total - T.retirado, T.pendiente, T.en_proceso, T.enviada + T.desbloqueada, T.matriculada, T.retirado, T.mujeres, T.hombres, T.nee || 0, T.prioritarios || 0, T.preferentes || 0, T.pueblos || 0, pct(T)]);
       var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Resumen');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Ciclo', 'Vigentes', 'Nuevos', 'PIE', 'PIE en evaluación', 'Con NEE', 'Pueblos originarios', 'Extranjeros']].concat((st.porCiclo || []).map(function (c) { return [c.ciclo, c.vigentes, c.nuevos, c.pie, c.pieEval, c.nee, c.pueblos, c.extranjeros]; }))), 'Por ciclo');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Ciclo', 'Vigentes', 'Nuevos', 'PIE', 'PIE en evaluación', 'Con NEE', 'Prioritarios', 'Preferentes', 'Pueblos originarios', 'Extranjeros']].concat((st.porCiclo || []).map(function (c) { return [c.ciclo, c.vigentes, c.nuevos, c.pie, c.pieEval, c.nee, c.prioritarios || 0, c.preferentes || 0, c.pueblos, c.extranjeros]; }))), 'Por ciclo');
       var dg = [['Ciclo', 'Diagnóstico', 'Estudiantes']]; (st.porCiclo || []).forEach(function (c) { Object.keys(c.diagnosticos || {}).forEach(function (d) { dg.push([c.ciclo, d, c.diagnosticos[d]]); }); });
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dg), 'Diagnósticos');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Comuna', 'Estudiantes']].concat((st.comunas || []).map(function (x) { return [x.nombre, x.n]; }))), 'Comunas');
@@ -4348,8 +4446,35 @@ var Staff = (function () {
       XLSX.writeFile(wb, 'Resumen_Matricula_' + S.form.config.anio + '.xlsx');
     };
   }
-  /* Pueblos originarios: qué porcentaje del total de estudiantes vigentes declara pertenecer a cada pueblo. */
-  function tarjetaPueblos(st, T) {
+  /* Ícono representativo de cada pueblo originario (símbolos reconocidos, dibujados en SVG). */
+  var PUEBLOS_ICO = {
+    mapuche: ['Kultrun mapuche', '#1f3f8f', '<circle cx="16" cy="16" r="13.5" fill="#f3e6cc" stroke="#5a3b1e" stroke-width="2"/><path d="M16 3.5v25M3.5 16h25" stroke="#1f3f8f" stroke-width="2"/><circle cx="9.5" cy="9.5" r="2" fill="#1f3f8f"/><circle cx="22.5" cy="9.5" r="2" fill="#1f3f8f"/><circle cx="9.5" cy="22.5" r="2" fill="#1f3f8f"/><circle cx="22.5" cy="22.5" r="2" fill="#1f3f8f"/>'],
+    aymara: ['Wiphala', '#c0392b', null],
+    quechua: ['Chakana (cruz andina)', '#b8860b', '<path d="M12 2H20V7H25V12H30V20H25V25H20V30H12V25H7V20H2V12H7V7H12Z" fill="#b8860b"/><path d="M13.5 5H18.5V9.5H22.5V13.5H27V18.5H22.5V22.5H18.5V27H13.5V22.5H9.5V18.5H5V13.5H9.5V9.5H13.5Z" fill="none" stroke="#fff3cf" stroke-width="1"/><circle cx="16" cy="16" r="3.6" fill="#fff"/>'],
+    'rapa nui': ['Moai', '#2a7f9e', '<path d="M11 30V18.5C9.3 17.5 9 14 10 11.5 10 6 12.3 2.5 16 2.5S22 6 22 11.5C23 14 22.7 17.5 21 18.5V30Z" fill="#5b5f66"/><path d="M11.5 11h9" stroke="#2e3136" stroke-width="2.2" stroke-linecap="round"/><path d="M16 11.5v7.5M13.5 22h5" stroke="#2e3136" stroke-width="1.6" stroke-linecap="round"/><path d="M2 30h28" stroke="#2a7f9e" stroke-width="2.5"/>'],
+    diaguita: ['Greca diaguita', '#8b2e1a', '<rect x="2" y="2" width="28" height="28" rx="5" fill="#f2e3c6"/><path d="M3 12l4.3-5 4.3 5 4.4-5 4.3 5 4.4-5 4.3 5" fill="none" stroke="#8b2e1a" stroke-width="2.4"/><path d="M3 25l4.3-5 4.3 5 4.4-5 4.3 5 4.4-5 4.3 5" fill="none" stroke="#2b2421" stroke-width="2.4"/><path d="M3 18.5h26" stroke="#8b2e1a" stroke-width="1.4"/>'],
+    lickanantay: ['Volcán Licancabur', '#b5651d', '<circle cx="24" cy="8" r="4" fill="#f0b429"/><path d="M2 28L14 8 26 28Z" fill="#9c5a2e"/><path d="M11 13l3-5 3 5-1.6-.9-1.4 1.4-1.4-1.4z" fill="#fff"/><path d="M2 28h28" stroke="#c9a26b" stroke-width="2"/>'],
+    colla: ['Cordillera y sol colla', '#7a3fc0', '<circle cx="16" cy="9" r="4.5" fill="#f0b429"/><path d="M1 28l9-13 5 7 5-9 11 15z" fill="#6b4a8a"/><path d="M8 18l2-3 2 3M18 16l2-3 2 3" stroke="#fff" stroke-width="1.4" fill="none"/>'],
+    kawesqar: ['Canoa kawésqar', '#2a6f97', '<path d="M3 17q13 9 26 0l-2.5 3.5q-10.5 6-21 0z" fill="#6b4a2b"/><path d="M16 17V6l6 7.5h-6" fill="#e9dcc3" stroke="#6b4a2b" stroke-width="1.2"/><path d="M2 26q3.5-2.5 7 0t7 0 7 0 7 0" fill="none" stroke="#2a6f97" stroke-width="2"/>'],
+    yagan: ['Canoa yagán con fuego', '#3d7a5a', '<path d="M3 18q13 8 26 0l-2.5 3.5q-10.5 5.5-21 0z" fill="#7a5230"/><path d="M16 17c-3-2-2.5-5 0-9 .5 2.5 3.5 3.5 2.5 6.5-.5 1.5-1.4 2.2-2.5 2.5z" fill="#e8742a"/><path d="M16 16.5c-1.3-1-1-2.6 0-4.2.4 1.4 1.7 2 1.1 3.3z" fill="#f6c343"/><path d="M2 27q3.5-2.5 7 0t7 0 7 0 7 0" fill="none" stroke="#3d7a5a" stroke-width="2"/>'],
+    chango: ['Balsa de cuero de lobo marino', '#2a9bb8', '<ellipse cx="10" cy="18" rx="7.5" ry="3.6" fill="#8a5a3b"/><ellipse cx="22" cy="18" rx="7.5" ry="3.6" fill="#7a4e33"/><path d="M6 14.5h20" stroke="#c9a26b" stroke-width="2"/><path d="M24 4l-6 12" stroke="#5a3b1e" stroke-width="1.8" stroke-linecap="round"/><path d="M2 26q3.5-2.5 7 0t7 0 7 0 7 0" fill="none" stroke="#2a9bb8" stroke-width="2"/>']
+  };
+  function puebloInfo(nombre) {
+    var n = CoreUtil.norm(nombre).replace('rapanui', 'rapa nui').replace('atacameno', 'lickanantay');
+    var k = Object.keys(PUEBLOS_ICO).filter(function (x) { return n.indexOf(x) >= 0; })[0];
+    return k ? { clave: k, titulo: PUEBLOS_ICO[k][0], color: PUEBLOS_ICO[k][1], svg: PUEBLOS_ICO[k][2] } : null;
+  }
+  function iconoPueblo(nombre) {
+    var p = puebloInfo(nombre), cuerpo;
+    if (!p) return '<span class="pueblo-ico" title="Otro pueblo"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#e9eef7"/><text x="16" y="21" text-anchor="middle" font-size="14" font-weight="700" fill="#5b6b85">' + esc(String(nombre || '?').charAt(0).toUpperCase()) + '</text></svg></span>';
+    if (p.clave === 'aymara') { // wiphala: 7 × 7 cuadros, diagonal blanca
+      var col = ['#d52b1e', '#f28c28', '#ffd100', '#ffffff', '#1e9e4a', '#1f5fbf', '#6a3d9a'], s = 28 / 7; cuerpo = '';
+      for (var r = 0; r < 7; r++) for (var q = 0; q < 7; q++) cuerpo += '<rect x="' + (2 + q * s) + '" y="' + (2 + r * s) + '" width="' + (s + .05) + '" height="' + (s + .05) + '" fill="' + col[(r + q + 4) % 7] + '"/>';
+      cuerpo += '<rect x="2" y="2" width="28" height="28" fill="none" stroke="#cfd6e4"/>';
+    } else cuerpo = p.svg;
+    return '<span class="pueblo-ico" title="' + esc(p.titulo) + '"><svg viewBox="0 0 32 32">' + cuerpo + '</svg></span>';
+  }
+  /* Pueblos originarios: qué porcentaje del total de estudiantes vigentes declara pertenecer a cada pueblo. */  function tarjetaPueblos(st, T) {
     var vig = T.total - T.retirado, todos = st.pueblosTodos || {}, VITAL = ['Mapuche', 'Aymara', 'Quechua', 'Rapa Nui'];
     var filas = VITAL.map(function (n) { var k = Object.keys(todos).filter(function (x) { return CoreUtil.norm(x).replace('rapanui', 'rapa nui') === CoreUtil.norm(n); })[0]; return { nombre: n, n: k ? todos[k] : 0, vital: true }; });
     Object.keys(todos).forEach(function (k) { if (!VITAL.some(function (n) { return CoreUtil.norm(n) === CoreUtil.norm(k).replace('rapanui', 'rapa nui'); })) filas.push({ nombre: k, n: todos[k], vital: false }); });
@@ -4362,16 +4487,18 @@ var Staff = (function () {
       '<div class="grow"><div class="eyebrow" style="color:#8a6a1f">Pueblos originarios</div><h3 style="margin:4px 0 6px">' + total + ' de ' + vig + ' estudiantes declaran pertenecer a un pueblo originario</h3>' +
       '<p class="small muted" style="margin:0">De ellos, <b>' + n4 + '</b> (' + pc(n4) + '% del total) pertenecen a los cuatro pueblos con vitalidad lingüística: Mapuche, Aymara, Quechua y Rapa Nui. Según lo declarado por las familias en la ficha; base: estudiantes vigentes.</p></div></div>' +
       '<div class="pueblo-bars" style="margin-top:18px">' + filas.map(function (x, i) {
-        return '<div class="pueblo-row"><div><b>' + esc(x.nombre) + '</b>' + (x.vital ? ' <span title="Pueblo con vitalidad lingüística">🗣</span>' : '') + '</div>' +
-          '<div class="pb"><i style="width:' + (x.n * 100 / max) + '%;background:' + COLORES[i % COLORES.length] + '"></i></div><div><b>' + x.n + '</b> <span class="muted small">· ' + pc(x.n) + '%</span></div></div>';
+        var inf = puebloInfo(x.nombre);
+        return '<div class="pueblo-row"><div class="pueblo-nom">' + iconoPueblo(x.nombre) + '<span><b>' + esc(x.nombre) + '</b>' + (x.vital ? '<small class="vital" title="Pueblo con vitalidad lingüística">lengua viva</small>' : '') + '</span></div>' +
+          '<div class="pb"><i style="width:' + (x.n * 100 / max) + '%;background:' + (inf ? inf.color : COLORES[i % COLORES.length]) + '"></i></div><div><b>' + x.n + '</b> <span class="muted small">· ' + pc(x.n) + '%</span></div></div>';
       }).join('') + '</div></section>';
   }  /* Resumen por ciclo: estudiantes nuevos, PIE, NEE por diagnóstico, pueblos originarios; distribución por comuna y procedencia. */
   function tarjetasInclusion(st) {
     var pc = st.porCiclo || [];
     if (!pc.length) return '';
-    var T = { vigentes: 0, nuevos: 0, repitentes: 0, pie: 0, pieEval: 0, nee: 0, pueblos: 0, extranjeros: 0 };
+    var T = { vigentes: 0, nuevos: 0, repitentes: 0, pie: 0, pieEval: 0, nee: 0, prioritarios: 0, preferentes: 0, pueblos: 0, extranjeros: 0 };
     pc.forEach(function (c) { for (var k in T) T[k] += c[k] || 0; });
-    function filaC(c, cls, n) { return '<tr class="' + (cls || '') + '"><td>' + esc(n || c.ciclo) + '</td><td><b>' + c.vigentes + '</b></td><td>' + c.nuevos + '</td><td>' + (c.repitentes || 0) + '</td><td>' + c.pie + '</td><td>' + c.pieEval + '</td><td>' + c.nee + '</td><td>' + c.pueblos + '</td><td>' + c.extranjeros + '</td></tr>'; }
+    function pcV(n) { return T.vigentes ? Math.round(n * 1000 / T.vigentes) / 10 + '%' : '0%'; }
+    function filaC(c, cls, n) { return '<tr class="' + (cls || '') + '"><td>' + esc(n || c.ciclo) + '</td><td><b>' + c.vigentes + '</b></td><td>' + c.nuevos + '</td><td>' + (c.repitentes || 0) + '</td><td>' + c.pie + '</td><td>' + c.pieEval + '</td><td>' + c.nee + '</td><td>' + (c.prioritarios || 0) + '</td><td>' + (c.preferentes || 0) + '</td><td>' + c.pueblos + '</td><td>' + c.extranjeros + '</td></tr>'; }
     var diags = {};
     pc.forEach(function (c) { Object.keys(c.diagnosticos || {}).forEach(function (d) { diags[d] = 1; }); });
     var dl = Object.keys(diags).sort();
@@ -4384,8 +4511,11 @@ var Staff = (function () {
     }
     return '<div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi k1"><span class="i">🆕</span><div class="v">' + T.nuevos + '</div><div class="l">Estudiantes nuevos (sin curso de procedencia)</div></div>' +
       '<div class="kpi k2"><span class="i">🧩</span><div class="v">' + T.pie + '</div><div class="l">Estudiantes PIE' + (T.pieEval ? ' · ' + T.pieEval + ' en evaluación' : '') + '</div></div>' +
-      '<div class="kpi k4"><span class="i">🌎</span><div class="v">' + T.extranjeros + '</div><div class="l">Estudiantes extranjeros</div></div></div>' +
-      '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Inclusión y diversidad por ciclo</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>Ciclo</th><th>Vigentes</th><th>Nuevos</th><th>Repitentes</th><th>PIE</th><th>PIE en evaluación</th><th>Con NEE</th><th>Pueblos orig.</th><th>Extranjeros</th></tr></thead><tbody>' +
+      '<div class="kpi k4"><span class="i">🌎</span><div class="v">' + T.extranjeros + '</div><div class="l">Estudiantes extranjeros</div></div>' +
+      '<div class="kpi k3"><span class="i">💡</span><div class="v">' + T.nee + '</div><div class="l">Estudiantes con N.E.E. <span class="small">(' + pcV(T.nee) + ' · incluye en evaluación)</span></div></div>' +
+      '<div class="kpi k1"><span class="i">⭐</span><div class="v">' + T.prioritarios + '</div><div class="l">Estudiantes prioritarios SEP <span class="small">(' + pcV(T.prioritarios) + ')</span></div></div>' +
+      '<div class="kpi k2"><span class="i">🔷</span><div class="v">' + T.preferentes + '</div><div class="l">Estudiantes preferentes SEP <span class="small">(' + pcV(T.preferentes) + ')</span></div></div></div>' +
+      '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Inclusión y diversidad por ciclo</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>Ciclo</th><th>Vigentes</th><th>Nuevos</th><th>Repitentes</th><th>PIE</th><th>PIE en evaluación</th><th>Con NEE</th><th>Prioritarios</th><th>Preferentes</th><th>Pueblos orig.</th><th>Extranjeros</th></tr></thead><tbody>' +
       pc.map(function (c) { return filaC(c); }).join('') + filaC(T, 'total', 'TOTAL') + '</tbody></table></div></section>' +
       (dl.length ? '<section class="card ciclo-card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>Estudiantes con NEE según diagnóstico</h3></div><div class="table-wrap"><table class="t"><thead><tr><th>Diagnóstico</th>' +
         pc.map(function (c) { return '<th>' + esc(c.ciclo) + '</th>'; }).join('') + '<th>Total</th></tr></thead><tbody>' +
@@ -4394,7 +4524,7 @@ var Staff = (function () {
       '<div class="grid" style="align-items:start">' + ranking(st.comunas, 'Estudiantes por comuna', '📍') + ranking(st.procedencias, 'Por establecimiento de procedencia', '🏫') + '</div>';
   }
   function sumar(lista) {
-    var t = { total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0, pueblos: 0 };
+    var t = { total: 0, pendiente: 0, en_proceso: 0, enviada: 0, desbloqueada: 0, matriculada: 0, retirado: 0, mujeres: 0, hombres: 0, nee: 0, prioritarios: 0, preferentes: 0, pueblos: 0 };
     lista.forEach(function (c) { for (var k in t) t[k] += c[k] || 0; });
     return t;
   }
@@ -4876,13 +5006,44 @@ var Staff = (function () {
   }
 
   /* ========================== REGLAMENTOS Y CARTAS ========================== */
-  async function vDocumentos() {
-    admin = await UI.api('datosAdmin');
-    main().innerHTML = '<div class="page-h"><h2>Reglamentos, documentos y cartas</h2><span class="grow"></span><button class="btn gold" data-d="nuevo">➕ Nuevo documento o carta</button></div>' +
-      '<div class="card" style="padding:12px 16px;margin-bottom:16px;background:var(--sky)"><span class="small">ℹ️ Suba los reglamentos (PDF) y sus resúmenes. Las <b>cartas</b> se imprimen junto a la ficha con espacio para firmas. Si marca «requiere confirmación», la familia debe declarar que lo leyó y quedará en el <b>acta</b> de la ficha.</span></div>' +
+  /* Modelos de autorizaciones ya redactados (el Equipo de Gestión puede ajustarlos antes de guardar). */
+  var INTRO_AUT = 'Yo, {{apoderado}}, RUT {{rut_apoderado}}, apoderado/a de {{estudiante}}, RUT {{rut_estudiante}}, matriculado/a en {{curso}} para el año escolar {{anio}} en el {{colegio}}, ';
+  var MODELOS_AUT = [
+    { titulo: 'Autorización para salidas pedagógicas', pregunta: '¿Autoriza la participación del estudiante en salidas pedagógicas y actividades fuera del establecimiento?',
+      resumen: 'Permiso general para que el estudiante participe en salidas pedagógicas, deportivas y culturales durante el año.',
+      contenido: INTRO_AUT + 'me pronuncio sobre la participación de mi pupilo/a en salidas pedagógicas, deportivas, culturales y recreativas que el establecimiento organice durante el año escolar {{anio}}, dentro de la comuna o región, acompañado/a por docentes y/o asistentes de la educación.\n\nDeclaro conocer que cada salida será informada previamente mediante comunicación escrita (lugar, fecha, horario, medio de transporte y responsables) y que podré retirar esta autorización respecto de una salida específica avisando por escrito al establecimiento. Las salidas se rigen por el Reglamento Interno Escolar y la normativa vigente del Ministerio de Educación.',
+      opcionSi: 'SÍ AUTORIZO la participación de mi pupilo/a en las salidas pedagógicas del año {{anio}}.', opcionNo: 'NO AUTORIZO; solicito ser consultado/a en cada salida.' },
+    { titulo: 'Autorización de atención psicosocial', pregunta: '¿Autoriza la atención del estudiante por el equipo psicosocial y de convivencia escolar?',
+      resumen: 'Permiso para que psicólogo/a, trabajador/a social u orientador/a atiendan y acompañen al estudiante cuando sea necesario.',
+      contenido: INTRO_AUT + 'me pronuncio sobre la atención de mi pupilo/a por parte del equipo psicosocial y de convivencia escolar del establecimiento (psicólogo/a, trabajador/a social, orientador/a y encargado/a de convivencia), mediante entrevistas, acompañamiento, talleres y, si corresponde, derivación a redes de apoyo externas.\n\nLa información obtenida se tratará con reserva y será utilizada solo para apoyar el bienestar y el proceso educativo del estudiante. Seré informado/a de las acciones relevantes que se realicen. Esta autorización rige para el año escolar {{anio}} y puede revocarse por escrito.',
+      opcionSi: 'SÍ AUTORIZO la atención de mi pupilo/a por el equipo psicosocial.', opcionNo: 'NO AUTORIZO, salvo situaciones que la ley obligue a atender.' },
+    { titulo: 'Autorización de evaluación psicopedagógica (PIE)', pregunta: '¿Autoriza que el estudiante sea evaluado por especialistas del Programa de Integración Escolar (PIE) si se requiere?',
+      resumen: 'Permiso para que especialistas del PIE evalúen al estudiante cuando se detecten necesidades de apoyo.',
+      contenido: INTRO_AUT + 'me pronuncio sobre la aplicación de evaluaciones psicopedagógicas, fonoaudiológicas, psicológicas u otras por parte de los profesionales del Programa de Integración Escolar (PIE), en caso de que el establecimiento detecte que mi pupilo/a podría requerir apoyos especializados, conforme al Decreto N° 170 de 2009 y al Decreto N° 83 de 2015.\n\nDeclaro saber que seré informado/a de los resultados y de los apoyos propuestos, y que el ingreso formal al programa requerirá mi consentimiento.',
+      opcionSi: 'SÍ AUTORIZO la evaluación de mi pupilo/a por especialistas PIE si se requiere.', opcionNo: 'NO AUTORIZO la evaluación.' },
+    { titulo: 'Autorización de administración de medicamentos', pregunta: '¿Autoriza que el establecimiento administre al estudiante el medicamento indicado por su médico?',
+      resumen: 'Para estudiantes que deben tomar un medicamento durante la jornada escolar, con receta médica.',
+      contenido: INTRO_AUT + 'me pronuncio sobre la administración, durante la jornada escolar, del medicamento que mi pupilo/a debe recibir según prescripción médica, informado en la ficha de matrícula (nombre, dosis y horario).\n\nMe comprometo a entregar la receta médica vigente y el medicamento en su envase original, rotulado con el nombre del estudiante, y a informar por escrito cualquier cambio en el tratamiento. El establecimiento no administrará medicamentos sin receta ni autorización escrita.',
+      opcionSi: 'SÍ AUTORIZO la administración del medicamento según receta médica.', opcionNo: 'NO AUTORIZO; el estudiante no requiere o no autorizo la administración.' },
+    { titulo: 'Autorización de uso de plataformas digitales', pregunta: '¿Autoriza la creación de una cuenta institucional del estudiante para plataformas educativas digitales?',
+      resumen: 'Permiso para crear la cuenta institucional del estudiante (correo y plataformas educativas).',
+      contenido: INTRO_AUT + 'me pronuncio sobre la creación y uso, por parte de mi pupilo/a, de una cuenta institucional (correo electrónico y plataformas educativas digitales) administrada por el establecimiento, con fines exclusivamente pedagógicos.\n\nDeclaro conocer que el establecimiento podrá supervisar el uso de estas cuentas, que se rigen por el Reglamento Interno Escolar, y me comprometo a acompañar a mi pupilo/a en su uso responsable y seguro.',
+      opcionSi: 'SÍ AUTORIZO la creación y el uso de la cuenta institucional.', opcionNo: 'NO AUTORIZO.' },
+    { titulo: 'Autorización de retiro autónomo del estudiante', pregunta: '¿Autoriza que el estudiante se retire solo/a del establecimiento al término de la jornada?',
+      resumen: 'Para estudiantes que pueden irse solos a su casa al terminar la jornada.',
+      contenido: INTRO_AUT + 'me pronuncio sobre el retiro de mi pupilo/a del establecimiento sin la compañía de un adulto al término de su jornada escolar, durante el año escolar {{anio}}.\n\nDeclaro que mi pupilo/a conoce el trayecto entre el establecimiento y su domicilio, y asumo la responsabilidad de su traslado una vez que haya salido del establecimiento. Esta autorización no aplica a retiros anticipados, que siempre deben realizarse por el apoderado/a o una persona autorizada en la ficha.',
+      opcionSi: 'SÍ AUTORIZO que mi pupilo/a se retire solo/a al término de la jornada.', opcionNo: 'NO AUTORIZO; será retirado/a por el apoderado/a o una persona autorizada.' },
+    { titulo: 'Autorización de envío de comunicaciones', campo: 'otr_autoriza_info', resumen: 'Permiso para enviar información y comunicaciones por correo electrónico, WhatsApp u otros medios.',
+      contenido: INTRO_AUT + 'me pronuncio sobre el envío, por parte del establecimiento, de información, citaciones y comunicaciones relativas a mi pupilo/a y a la comunidad educativa a través del correo electrónico, WhatsApp, plataformas digitales u otros medios que yo haya informado en la ficha de matrícula.\n\nMe comprometo a mantener actualizados mis datos de contacto. Los datos personales se usarán solo para fines educativos y de comunicación institucional, conforme a la Ley N° 19.628.',
+      opcionSi: 'SÍ AUTORIZO el envío de comunicaciones por los medios indicados.', opcionNo: 'NO AUTORIZO; prefiero comunicaciones en papel.' }
+  ];
+
+  async function vDocumentos() {    admin = await UI.api('datosAdmin');
+    main().innerHTML = '<div class="page-h"><h2>Reglamentos, documentos y cartas</h2><span class="grow"></span><button class="btn ghost" data-d="nueva-aut">✍️ Nueva autorización</button><button class="btn gold" data-d="nuevo">➕ Nuevo documento o carta</button></div>' +
+      '<div class="card" style="padding:12px 16px;margin-bottom:16px;background:var(--sky)"><span class="small">ℹ️ Suba los reglamentos (PDF) y sus resúmenes. Las <b>cartas</b> se imprimen junto a la ficha con espacio para firmas. Si marca «requiere confirmación», la familia debe declarar que lo leyó y quedará en el <b>acta</b> de la ficha. Las <b>autorizaciones</b> (religión, uso de imagen y las que agregue) se responden con Sí / No en la ficha y se imprimen <b>cada una en hoja aparte</b> para la firma.</span></div>' +
       admin.documentos.map(function (d) {
-        return '<section class="card doc-card"' + (UI.si(d.activo) ? '' : ' style="opacity:.55"') + '><div class="doc-ico">' + (d.tipo === 'carta' ? '✉️' : '📘') + '</div><div class="grow"><h3 style="font-size:17px">' + esc(d.titulo) + '</h3>' +
-          '<p class="muted" style="margin:0 0 8px">' + esc(d.resumen) + '</p><div class="row small" style="gap:6px">' + '<span class="badge b-gray">' + (d.tipo === 'carta' ? 'Carta' : 'Documento institucional') + '</span>' +
+        return '<section class="card doc-card"' + (UI.si(d.activo) ? '' : ' style="opacity:.55"') + '><div class="doc-ico">' + (d.tipo === 'carta' ? '✉️' : d.tipo === 'autorizacion' ? '✍️' : '📘') + '</div><div class="grow"><h3 style="font-size:17px">' + esc(d.titulo) + '</h3>' +
+          '<p class="muted" style="margin:0 0 8px">' + esc(d.resumen) + '</p><div class="row small" style="gap:6px">' + '<span class="badge b-gray">' + (d.tipo === 'carta' ? 'Carta' : d.tipo === 'autorizacion' ? 'Autorización · hoja aparte' : 'Documento institucional') + '</span>' + (d.tipo === 'autorizacion' && d.campo ? '<span class="badge b-blue" title="Pregunta en la ficha">❓ ' + esc(((S.form.campos.filter(function (c) { return c.id === d.campo; })[0]) || {}).etiqueta || d.campo) + '</span>' : '') +
           (UI.si(d.requiereAceptacion) ? '<span class="badge b-red">Requiere confirmación</span>' : '') + (UI.si(d.imprimir) ? '<span class="badge b-gold">Se imprime con la ficha</span>' : '') +
           (d.url ? '<a class="badge b-blue" href="' + esc(d.url) + '" target="_blank" rel="noopener">📄 Ver archivo</a>' : '<span class="badge b-gray">Sin archivo</span>') + (UI.si(d.activo) ? '' : '<span class="badge b-gray">Oculto</span>') + '</div></div>' +
           '<div class="row"><button class="icon-btn" data-d="editar" data-id="' + esc(d.id) + '">✏️</button><button class="icon-btn" data-d="eliminar" data-id="' + esc(d.id) + '">🗑</button></div></section>';
@@ -4895,19 +5056,24 @@ var Staff = (function () {
         if (await UI.intentar(function () { return UI.api('eliminarDocumento', { id: d.id }); }, 'Eliminando…')) { await refrescarForm(); vDocumentos(); }
         return;
       }
-      modalDocumento(d);
+      modalDocumento(d, b.dataset.d === 'nueva-aut' ? 'autorizacion' : '');
     };
   }
-  function modalDocumento(d) {
+  function modalDocumento(d, tipoNuevo) {
     var nuevo = !d;
-    d = d || { tipo: 'reglamento', titulo: '', resumen: '', contenido: '', url: '', requiereAceptacion: 'SI', imprimir: 'NO', activo: 'SI', orden: String((admin.documentos.length + 1) * 10) };
+    d = d || { tipo: tipoNuevo || 'reglamento', opcionSi: 'SÍ AUTORIZO.', opcionNo: 'NO AUTORIZO.', campo: '', titulo: '', resumen: '', contenido: '', url: '', requiereAceptacion: 'SI', imprimir: 'NO', activo: 'SI', orden: String((admin.documentos.length + 1) * 10) };
     UI.modal({
-      title: nuevo ? '➕ Nuevo documento o carta' : '✏️ Editar documento', size: 'wide',
-      html: '<div class="grid"><div class="field"><label>Tipo</label><select id="d-tipo"><option value="reglamento">Documento institucional / reglamento</option><option value="carta">Carta (se firma con la ficha)</option></select></div>' +
+      title: nuevo ? (tipoNuevo === 'autorizacion' ? '✍️ Nueva autorización' : '➕ Nuevo documento o carta') : '✏️ Editar documento', size: 'wide',
+      html: '<div class="grid"><div class="field"><label>Tipo</label><select id="d-tipo"><option value="reglamento">Documento institucional / reglamento</option><option value="carta">Carta (se firma con la ficha)</option><option value="autorizacion">Autorización (Sí / No en la ficha, se firma en hoja aparte)</option></select></div>' +
         '<div class="field"><label>Orden</label><input id="d-or" type="number" value="' + esc(d.orden) + '"></div>' +
         '<div class="field full"><label>Título<span class="req">*</span></label><input id="d-ti" value="' + esc(d.titulo) + '"></div>' +
         '<div class="field full"><label>Resumen (lo que verá la familia)</label><textarea id="d-re" rows="3">' + esc(d.resumen) + '</textarea></div>' +
-        '<div class="field full" id="d-cow"><label>Texto de la carta</label><textarea id="d-co" rows="9">' + esc(d.contenido) + '</textarea><small class="help">Puede usar: {{apoderado}} {{rut_apoderado}} {{estudiante}} {{rut_estudiante}} {{curso}} {{curso_anterior}} {{numero_matricula}} {{anio}} {{colegio}} {{ciudad}} {{fecha}} {{director}}</small></div>' +
+        '<div class="field full aut-only"><label>📝 Partir de un modelo ya redactado</label><select id="d-mod"><option value="">— Elegir un modelo (opcional) —</option>' + MODELOS_AUT.map(function (m, i) { return '<option value="' + i + '">' + esc(m.titulo) + '</option>'; }).join('') + '</select><small class="help">Rellena el título, la pregunta y el texto. Puede ajustarlos antes de guardar.</small></div>' +
+        '<div class="field full aut-only"><label>Pregunta que responde la familia en la ficha</label><select id="d-campo"><option value="_nueva">➕ Crear una pregunta nueva (Sí / No)</option>' + S.form.campos.filter(function (c) { return c.tipo === 'si_no'; }).map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === d.campo ? ' selected' : '') + '>' + esc(c.etiqueta) + '</option>'; }).join('') + '</select>' +
+        '<input id="d-preg" style="margin-top:8px" placeholder="Ej.: ¿Autoriza la participación del estudiante en salidas pedagógicas?" value="' + esc((/^aut_/.test(d.campo || '') && ((S.form.campos.filter(function (c) { return c.id === d.campo; })[0]) || {}).etiqueta) || '') + '"><small class="help">Si crea una pregunta nueva, se agrega en «Otros antecedentes» de la ficha como obligatoria.</small></div>' +
+        '<div class="field full aut-only"><label>Texto de la opción «Sí»</label><input id="d-si" value="' + esc(d.opcionSi || '') + '"></div>' +
+        '<div class="field full aut-only"><label>Texto de la opción «No»</label><input id="d-no" value="' + esc(d.opcionNo || '') + '"><small class="help">En la hoja impresa se marca automáticamente la opción que eligió la familia.</small></div>' +
+        '<div class="field full" id="d-cow"><label>Texto de la carta / autorización</label><textarea id="d-co" rows="9">' + esc(d.contenido) + '</textarea><small class="help">Puede usar: {{apoderado}} {{rut_apoderado}} {{estudiante}} {{rut_estudiante}} {{curso}} {{curso_anterior}} {{numero_matricula}} {{anio}} {{colegio}} {{ciudad}} {{fecha}} {{director}} {{credo}}</small></div>' +
         '<div class="field full"><label>Archivo del documento (PDF, Word…)</label><div class="dropzone" id="d-dz">📎 <b>Pinche para subir un archivo</b> <span class="small muted" id="d-fn">' + (d.url ? '(ya tiene un archivo; suba otro para reemplazarlo)' : '') + '</span><input type="file" id="d-file" hidden accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.png"></div></div>' +
         '<div class="field full"><label>…o enlace al documento (Google Drive, página del colegio)</label><input id="d-url" type="url" value="' + (d.url && d.url.indexOf('data:') === 0 ? '' : esc(d.url)) + '" placeholder="https://"></div>' +
         '<div class="field full row" style="gap:22px"><label class="check"><input type="checkbox" id="d-ac"' + (UI.si(d.requiereAceptacion) ? ' checked' : '') + '> Requiere confirmación de lectura (acta)</label>' +
@@ -4922,14 +5088,30 @@ var Staff = (function () {
           }
           var doc = { id: d.id, tipo: q('#d-tipo').value, titulo: q('#d-ti').value, resumen: q('#d-re').value, contenido: q('#d-co').value,
             url: q('#d-url').value || (d.url && d.url.indexOf('data:') === 0 ? d.url : ''), orden: q('#d-or').value,
-            requiereAceptacion: q('#d-ac').checked, imprimir: q('#d-im').checked, activo: q('#d-vi').checked };
+            requiereAceptacion: q('#d-ac').checked, imprimir: q('#d-im').checked, activo: q('#d-vi').checked,
+            campo: q('#d-campo').value, pregunta: q('#d-preg').value, opcionSi: q('#d-si').value, opcionNo: q('#d-no').value };
           try { return await UI.api('guardarDocumento', { documento: doc, archivo: archivo }); } catch (e) { UI.toast(e.userMsg || e.message, 'bad'); return false; }
         }
       }],
       onOpen: function (el) {
         var t = el.querySelector('#d-tipo'); t.value = d.tipo;
-        function vis() { el.querySelector('#d-cow').classList.toggle('hidden', t.value !== 'carta' && !el.querySelector('#d-co').value); }
+        function vis() {
+          el.querySelector('#d-cow').classList.toggle('hidden', t.value === 'reglamento' && !el.querySelector('#d-co').value);
+          UI.$$('.aut-only', el).forEach(function (x) { x.classList.toggle('hidden', t.value !== 'autorizacion'); });
+          if (t.value === 'autorizacion' && nuevo) { el.querySelector('#d-im').checked = true; el.querySelector('#d-ac').checked = false; }
+        }
         t.onchange = vis; vis();
+        if (!d.campo) el.querySelector('#d-campo').value = '_nueva';
+        el.querySelector('#d-campo').onchange = function () { el.querySelector('#d-preg').classList.toggle('hidden', this.value !== '_nueva' && !/^aut_/.test(this.value)); };
+        el.querySelector('#d-campo').onchange();
+        el.querySelector('#d-mod').onchange = function () {
+          var m = MODELOS_AUT[this.value]; if (!m) return;
+          el.querySelector('#d-ti').value = m.titulo; el.querySelector('#d-re').value = m.resumen; el.querySelector('#d-co').value = m.contenido;
+          el.querySelector('#d-si').value = m.opcionSi; el.querySelector('#d-no').value = m.opcionNo;
+          var sel = el.querySelector('#d-campo');
+          if (m.campo && sel.querySelector('option[value="' + m.campo + '"]')) sel.value = m.campo; else { sel.value = '_nueva'; el.querySelector('#d-preg').value = m.pregunta || ''; }
+          sel.onchange();
+        };
         el.querySelector('#d-dz').onclick = function (e) { if (e.target.id !== 'd-file') el.querySelector('#d-file').click(); };
         el.querySelector('#d-file').onchange = function () { el.querySelector('#d-fn').textContent = this.files[0] ? '✓ ' + this.files[0].name : ''; };
       }
@@ -5257,12 +5439,52 @@ var Staff = (function () {
     };
   }
 
-  async function vBitacora() {
-    var b = await UI.api('bitacora');
-    main().innerHTML = '<div class="page-h"><h2>Bitácora de actividad</h2><span class="muted small">Últimos 300 registros</span></div><section class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table class="t"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>' +
-      b.map(function (r) { return '<tr><td class="nowrap small">' + esc(r.fecha) + '</td><td>' + esc(r.usuario) + '</td><td><b>' + esc(r.accion) + '</b></td><td class="small muted">' + esc(r.detalle) + '</td></tr>'; }).join('') + '</tbody></table></div></section>';
+  /* Bitácora: filtrar por tipo de acción, usuario o texto; ver todo el historial y ordenar por cualquier columna. */
+  var bit = { todos: false, accion: '', usuario: '', q: '', orden: 'fecha', dir: -1, datos: null };
+  function tipoAccion(a) { return String(a || '').replace(/\s*N°\s*\S+/g, '').replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim() || 'Sin acción'; }
+  async function vBitacora(recargar) {
+    if (!bit.datos || recargar !== false) bit.datos = await UI.api('bitacora', { todos: bit.todos });
+    var datos = bit.datos, tipos = {}, usuarios = {};
+    datos.forEach(function (r) { var t = tipoAccion(r.accion); tipos[t] = (tipos[t] || 0) + 1; usuarios[r.usuario || '—'] = (usuarios[r.usuario || '—'] || 0) + 1; });
+    var listaTipos = Object.keys(tipos).sort(function (a, b) { return tipos[b] - tipos[a] || (a < b ? -1 : 1); });
+    var listaUs = Object.keys(usuarios).sort();
+    if (bit.accion && !tipos[bit.accion]) bit.accion = '';
+    var q = norm(bit.q);
+    var filas = datos.filter(function (r) {
+      return (!bit.accion || tipoAccion(r.accion) === bit.accion) && (!bit.usuario || (r.usuario || '—') === bit.usuario) &&
+        (!q || norm(r.fecha + ' ' + r.usuario + ' ' + r.accion + ' ' + r.detalle).indexOf(q) >= 0);
+    });
+    filas.sort(function (a, b) { var x = norm(a[bit.orden]), y = norm(b[bit.orden]); return (x < y ? -1 : x > y ? 1 : 0) * bit.dir || (a.fecha < b.fecha ? 1 : -1); });
+    function th(k, t) { return '<th class="ord' + (bit.orden === k ? ' activo' : '') + '" data-ord="' + k + '">' + t + ' <span>' + (bit.orden === k ? (bit.dir > 0 ? '▲' : '▼') : '↕') + '</span></th>'; }
+    main().innerHTML = '<div class="page-h"><div><h2>Bitácora de actividad</h2><span class="muted small">' + (bit.todos ? 'Historial completo' : 'Últimos 300 registros') + ' · ' + datos.length + ' registros</span></div><span class="grow"></span>' +
+      (bit.todos ? '' : '<button class="btn ghost" id="bt-todo">📜 Ver todo el historial</button>') + '<button class="btn ghost" id="bt-xls">⬇ Exportar Excel</button></div>' +
+      '<div class="chips-filtro" id="bt-chips"><button class="chip-f' + (!bit.accion ? ' activo' : '') + '" data-acc="">Todas <b>' + datos.length + '</b></button>' +
+      listaTipos.slice(0, 12).map(function (t) { return '<button class="chip-f' + (bit.accion === t ? ' activo' : '') + '" data-acc="' + esc(t) + '">' + esc(t) + ' <b>' + tipos[t] + '</b></button>'; }).join('') + '</div>' +
+      '<div class="toolbar"><select id="bt-acc"><option value="">Todas las acciones (' + listaTipos.length + ')</option>' + listaTipos.map(function (t) { return '<option' + (bit.accion === t ? ' selected' : '') + ' value="' + esc(t) + '">' + esc(t) + ' (' + tipos[t] + ')</option>'; }).join('') + '</select>' +
+      '<select id="bt-us"><option value="">Todos los usuarios</option>' + listaUs.map(function (u) { return '<option' + (bit.usuario === u ? ' selected' : '') + ' value="' + esc(u) + '">' + esc(u) + ' (' + usuarios[u] + ')</option>'; }).join('') + '</select>' +
+      '<input class="search" id="bt-q" type="text" placeholder="🔎 Buscar en la bitácora…" value="' + esc(bit.q) + '">' +
+      (bit.accion || bit.usuario || bit.q ? '<button class="btn sm ghost" id="bt-limpiar">✕ Limpiar filtros</button>' : '') + '</div>' +
+      '<section class="card" style="padding:0;overflow:hidden"><div class="curso-h"><h3>' + filas.length + ' registro' + (filas.length === 1 ? '' : 's') + (bit.accion ? ' · ' + esc(bit.accion) : '') + '</h3><span class="muted small">Pinche un encabezado para ordenar</span></div>' +
+      '<div class="table-wrap"><table class="t"><thead><tr>' + th('fecha', 'Fecha') + th('usuario', 'Usuario') + th('accion', 'Acción') + th('detalle', 'Detalle') + '</tr></thead><tbody>' +
+      (filas.length ? filas.map(function (r) { return '<tr><td class="nowrap small">' + esc(r.fecha) + '</td><td>' + esc(r.usuario) + '</td><td><b>' + esc(r.accion) + '</b></td><td class="small muted">' + esc(r.detalle) + '</td></tr>'; }).join('') :
+        '<tr><td colspan="4" class="muted" style="text-align:center;padding:24px">No hay registros con estos filtros.</td></tr>') + '</tbody></table></div></section>';
+    UI.$('#bt-acc').onchange = function () { bit.accion = this.value; vBitacora(false); };
+    UI.$('#bt-us').onchange = function () { bit.usuario = this.value; vBitacora(false); };
+    UI.$('#bt-q').oninput = UI.debounce(function () { bit.q = UI.$('#bt-q').value; vBitacora(false).then(function () { var el = UI.$('#bt-q'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }); }, 300);
+    var lim = UI.$('#bt-limpiar'); if (lim) lim.onclick = function () { bit.accion = ''; bit.usuario = ''; bit.q = ''; vBitacora(false); };
+    var todo = UI.$('#bt-todo'); if (todo) todo.onclick = function () { bit.todos = true; vBitacora(); };
+    UI.$('#bt-chips').onclick = function (e) { var b = e.target.closest('[data-acc]'); if (b) { bit.accion = b.dataset.acc; vBitacora(false); } };
+    main().querySelector('thead').onclick = function (e) {
+      var h = e.target.closest('[data-ord]'); if (!h) return;
+      if (bit.orden === h.dataset.ord) bit.dir = -bit.dir; else { bit.orden = h.dataset.ord; bit.dir = h.dataset.ord === 'fecha' ? -1 : 1; }
+      vBitacora(false);
+    };
+    UI.$('#bt-xls').onclick = function () {
+      var ws = XLSX.utils.aoa_to_sheet([['Fecha', 'Usuario', 'Tipo de acción', 'Acción', 'Detalle']].concat(filas.map(function (r) { return [r.fecha, r.usuario, tipoAccion(r.accion), r.accion, r.detalle]; })));
+      ws['!cols'] = [{ wch: 17 }, { wch: 26 }, { wch: 30 }, { wch: 40 }, { wch: 70 }];
+      var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Bitácora'); XLSX.writeFile(wb, 'Bitacora_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    };
   }
-
   return { iniciar: iniciar };
 })();
 
