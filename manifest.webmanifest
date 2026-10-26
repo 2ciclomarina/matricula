@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Fichas de Matrícula · Colegio Marina de Chile",
+  "short_name": "Matrícula",
+  "description": "Plataforma de fichas de matrícula del Colegio Marina de Chile, Concepción.",
+  "lang": "es-CL",
+  "start_url": "./?app=1",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b3a8a",
+  "theme_color": "#12347a",
+  "categories": ["education"],
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
