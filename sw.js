@@ -1,4 +1,4 @@
-/* Service worker · Fichas de Matrícula
+/* Service worker · Fichas de Pre Matrícula
    - Permite instalar la página como aplicación.
    - Guarda solo index.html e íconos: la página abre al instante desde el teléfono o computador y se actualiza en segundo plano.
    - Si hay una versión nueva, avisa a la página para ofrecer «Actualizar».

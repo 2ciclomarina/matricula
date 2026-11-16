@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Fichas de Matrícula · Colegio Marina de Chile",
+  "name": "Fichas de Pre Matrícula · Colegio Marina de Chile",
   "short_name": "Matrícula",
-  "description": "Plataforma de fichas de matrícula del Colegio Marina de Chile, Concepción.",
+  "description": "Plataforma de fichas de Pre Matrícula del Colegio Marina de Chile, Concepción.",
   "lang": "es-CL",
   "start_url": "./?app=1",
   "scope": "./",
